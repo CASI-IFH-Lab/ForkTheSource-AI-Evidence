@@ -174,9 +174,14 @@ def test_p1_lives_where_the_plan_says():
     assert callable(pdf_parser.extract_text)
 
 
-def test_pipeline_module_is_reserved_for_p6():
-    """src/pipeline.py is P6's file. Creating it empty invites imports from nothing."""
-    assert not (SRC / "pipeline.py").exists(), "src/pipeline.py is reserved for P6"
+def test_p6_is_a_file_not_a_package():
+    """src/pipeline.py is P6's file, and it stays a FILE.
+
+    Was "reserved for P6" until P6 landed. The half that still matters is the second
+    assertion: `src/pipeline/` as a package would collide with the module name every
+    other lane imports, and on a case-insensitive filesystem the collision is silent.
+    """
+    assert (SRC / "pipeline.py").is_file(), "src/pipeline.py is P6's orchestrator"
     assert not (SRC / "pipeline").is_dir(), (
         "src/pipeline/ as a package collides with src/pipeline.py, which the plan "
         "reserves for the P6 orchestrator"
