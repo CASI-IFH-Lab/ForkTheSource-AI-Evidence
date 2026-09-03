@@ -63,16 +63,26 @@ cp .env.example .env
 it and shows up as a spurious deletion in your next `git status`. (This has already
 happened once in this repo.)
 
-Now open `.env` and set both values:
+Now open `.env` and set **all three** values:
 
 ```
 AIR_API_KEY=<paste your own key from Voyager here>
 AIR_BASE_URL=<leave this as the value already in .env.example>
+CROSSREF_MAILTO=<your own ASU address, e.g. yourasurite@asu.edu>
 ```
 
-`AIR_BASE_URL` ships in the template with the correct gateway URL already filled in —
-you only need to replace `AIR_API_KEY`. Both names must be present. `.env` is in
-`.gitignore` and must never be committed; verify with:
+`AIR_BASE_URL` ships in the template with the correct gateway URL already filled in, so
+you only need to replace the other two. **All three names must be present.**
+
+- **`AIR_API_KEY`** — your own key from Voyager. `src/llm.py` raises without it.
+- **`AIR_BASE_URL`** — the gateway. Leave the template's value alone.
+- **`CROSSREF_MAILTO`** — your own ASU address, sent to Crossref as the polite-pool
+  contact. `src/settings.py: crossref_mailto()` raises without it, and P4 refuses to start.
+  It is in `.env` rather than `config.yaml` because it differs per teammate, and because a
+  real mailbox in a tracked file is the same shape of mistake as a pasted key — see
+  **D-007** in [decisions.md](decisions.md). Nothing calls it yet; P4 will be the first.
+
+`.env` is in `.gitignore` and must never be committed; verify with:
 
 ```bash
 git check-ignore -v .env
@@ -213,10 +223,13 @@ Causes, in the order they actually happen:
    ```bash
    grep -oE '^[A-Za-z_][A-Za-z0-9_]*' .env
    ```
-   Expected exactly: `AIR_API_KEY` and `AIR_BASE_URL`.
+   Expected exactly: `AIR_API_KEY`, `AIR_BASE_URL` and `CROSSREF_MAILTO`.
 4. **You edited `.env.example` instead of `.env`.** Common, and the app cannot tell.
 
-The same applies verbatim to `AIR_API_KEY is not set`.
+The same applies verbatim to `AIR_API_KEY is not set` and to
+`CROSSREF_MAILTO is not set` — the last of which comes from `src/settings.py` rather than
+`src/llm.py`, and is raised for the reason in **D-007**: without a contact address Crossref
+demotes you out of the polite pool *silently*, so the missing value has to be loud.
 
 ## The key authenticates but the gateway rejects the request
 

@@ -11,7 +11,8 @@ Ground truth: [module_implementation_plan.pdf](module_implementation_plan.pdf), 
 > **Any constraint here that you might want to argue with cites a D-number** —
 > see [decisions.md](decisions.md), whose *Open at Sync 1* section is the short list of what
 > is still unresolved. The realignment this file describes is **D-002**; the three-tier
-> ownership rule that governs the import arrows is **D-008** (open).
+> ownership rule that governs the import arrows is **D-008**, now closed and encoded as
+> constants in `tests/test_layout.py`.
 
 ## The flow
 
@@ -207,9 +208,9 @@ zero-accusation check on the clean control.
 | `src/ingest/__init__.py` | Package marker, P1-P2. |
 | `src/resolvers/__init__.py` | Package marker, P3-P4. Empty otherwise. |
 | `src/matching/__init__.py` | Package marker, P5. Empty otherwise. |
-| `src/settings.py` | **Real.** The B2 loader, 11 readers, no defaults. |
+| `src/settings.py` | **Real.** The B2 loader: **ten `config.yaml` readers**, plus `crossref_mailto()` which reads the environment (**D-007**). No defaults anywhere. |
 | `src/llm.py` | **Real.** Gateway client from env. No caller yet. |
 | `app.py` | **Real.** B0 shell: drop zone → raw text. Superseded by `dashboard/app.py` at A2, and **deleted in the A3 PR — D-010**. |
 | `src/pipeline.py` | **Deliberately absent.** Reserved for P6; a test asserts it. |
-| `src/contract.py` | **Deliberately absent.** B1, Arsha's; a test asserts it. |
+| `src/contract.py` | **Deliberately absent.** B1, Arsha's. **No test asserts its absence** — that assertion was removed so creating the file leaves the suite green (**D-006**). |
 | `src/judge/`, `dashboard/` | **Deliberately absent.** Arsha creates them on her branch. |

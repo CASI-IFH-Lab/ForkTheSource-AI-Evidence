@@ -14,7 +14,9 @@ resolvers:
   cache_ttl_hours: 72
   timeout_seconds: 10                                # HTTP timeout, not the LLM one
   providers: [crossref, openalex, arxiv]             # P4 waterfall order
-  mailto: your-asurite@asu.edu                       # Crossref polite pool - put YOUR ASU address here
+  # NO mailto key here. The Crossref polite-pool address is per-person, so it lives in
+  # .env as CROSSREF_MAILTO - see docs/decisions.md D-007. P4 must refuse to start when
+  # it is unset, because demotion out of the polite pool is silent.
 
 # Every LLM call, any stage
 llm:

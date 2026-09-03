@@ -18,16 +18,16 @@ Owners and plan status are from the plan. Actual status is from the tree.
 | ID | Module | Owner | Queue # | **Actual status in this repo** | Where |
 |----|--------|-------|---------|-------------------------------|-------|
 | B0 | App skeleton | Ritik | 1 | **DONE — ON `main`.** Merged in PR #1 at `a579dab`. App starts, drop zone accepts a PDF, raw text renders. Self-merged without review — **D-021**. | `main` |
-| B1 | `src/contract.py` + fixtures | **Arsha** | 2 | **Not started. Critical path.** Does not exist and must not be created by anyone else. `tests/test_layout.py` asserts its absence as a live reminder — **D-006**. Also carries `src/priority.py` — **D-009**. | — |
+| B1 | `src/contract.py` + fixtures | **Arsha** | 2 | **Not started. Critical path.** Does not exist and must not be created by anyone else. **No test asserts its absence** — that assertion was removed so creating the file does not turn the suite red (**D-006**). Also carries `src/priority.py` — **D-009**. | — |
 | B2 | `config.yaml` + `src/settings.py` | Ritik | 3 | **DONE — ON `main`**, landed inside B0 and extended. See below. Critic keys dropped — **D-004**. | `main` |
 | B3 | Golden-label format + defect catalog | **Roy** | 4 | **DONE — ON `main`.** Merged in PR #2 at `04b8ffe`. Written by Ritik in Roy's absence; **Roy owns it from here.** Nine rulings — **D-011**-**D-019**; one open constraint on P5 — **D-020**. | `main` |
 | P1 | PDF intake & normalization | Ritik | 5 | **HALF DONE.** See the P1 section. | `src/ingest/pdf_parser.py` |
 | P2 | Reference extractor (LLM) | Ritik | 8 | **Not started. Blocked on B1.** | → `src/ingest/extractor.py`, `claims.py`, `prompts.py` |
 | P3 | Resolver cache layer (SQLite) | Ritik | 10 | **Not started.** Config keys now exist (`cache_ttl_hours`, `schema_version`). | → `src/resolvers/cache.py` |
-| P4 | Scholarly resolvers | Ritik | 12 | **Not started.** Config keys now exist (`providers`, `mailto`, `timeout_seconds`). **`mailto` must move to `.env` as `CROSSREF_MAILTO` and P4 must refuse to start without it — D-007, decided and NOT yet implemented.** **Sync 1 gate.** | → `src/resolvers/{crossref,openalex,arxiv,resolver}.py` |
+| P4 | Scholarly resolvers | Ritik | 12 | **Not started.** Config keys exist (`providers`, `timeout_seconds`). **`CROSSREF_MAILTO` now lives in `.env`, not `config.yaml` — D-007, IMPLEMENTED.** P4 **must call `settings.crossref_mailto()` before its first request and let it raise**: without a contact address Crossref demotes you out of the polite pool *silently* — slower answers and tighter rate limits, no error — so P4 looks like it has a performance problem rather than a config one. **Sync 1 gate.** | → `src/resolvers/{crossref,openalex,arxiv,resolver}.py` |
 | P5 | Evidence builder + rule classifier | Ritik | 13 | **Not started.** All four thresholds now in config. | → `src/matching/{evidence,rules}.py` |
 | P6 | Pipeline orchestrator | Ritik | 14 | **Not started.** `src/pipeline.py` deliberately does not exist — reserved, and asserted absent by a test. | → `src/pipeline.py`, `scripts/run_pipeline.py` |
-| A1 | LLM judge agent (incl. the folded-in critic as `gate.py`) | **Arsha** | 6 | **Not started.** Unblocked by B1 + fixtures — no pipeline imports needed. `gate.py` is three code checks, not a model call — **D-004**. `tests/test_layout.py` needs amending first — **D-008**. | → `src/judge/{prompts,agent,gate,priority}.py` |
+| A1 | LLM judge agent (incl. the folded-in critic as `gate.py`) | **Arsha** | 6 | **Not started.** Unblocked by B1 + fixtures — no pipeline imports needed. `gate.py` is three code checks, not a model call — **D-004**, still open. `tests/test_layout.py` now permits intra-package and shared-infra imports — **D-008, CLOSED**; `src/judge/agent.py` importing `src/judge/prompts.py` and `src/llm` is verified green. | → `src/judge/{prompts,agent,gate,priority}.py` |
 | A2 | Interactive dashboard | **Arsha** | 9 | **Not started.** Runs on `ledger_fixture.json` alone, fully offline. | → `dashboard/{app,theme}.py` |
 | A3 | Integration (`judge_fn` wiring) | **Arsha** (Ritik reviews) | 15 | **Not started.** Needs P6 + A1 + A2 all on main. **Deletes `app.py`** — **D-010**. | → `src/judge/wiring.py`, `dashboard/app.py` |
 | R1 | Spiked corpus + golden labels | **Roy** | 7 | **UNBLOCKED NOW** — B3 is on `main` and R1's only dependency is its format. Data-only. `eval/corpus/originals/` stays **tracked**. | → `eval/corpus/`, `eval/golden/`, `docs/defect_catalog.md` |
@@ -46,7 +46,7 @@ The files that prove it:
 | File | What it contributes to B2 |
 |------|---------------------------|
 | `config.yaml` | Models per role, temperature, thresholds, banned terms, cache settings, resolver settings, priority severities — every tunable the plan's B2 card lists. |
-| `src/settings.py` | The loader, and the only code that opens `config.yaml`. Ten readers, no defaults anywhere. |
+| `src/settings.py` | The loader, and the only code that opens `config.yaml`. **Ten `config.yaml` readers plus one env-backed reader** (`crossref_mailto()`, **D-007**), no defaults anywhere. |
 | `.env.example` | The credential template: `AIR_API_KEY`, `AIR_BASE_URL`, placeholder values. On `main` since `ffd0180`. |
 | `tests/test_config.py` | 12 tests pinning the shape, including that plan-sourced thresholds are not casually retuned. |
 
@@ -111,17 +111,28 @@ realignment in this PR.
 **B1 blocks P2, A1 and R1 — three modules across all three lanes.** It is the highest-
 leverage hour anyone can spend right now. Nobody should work around it by inlining their
 own copy of the four statuses; that guarantees a rename conflict the day B1 lands.
-`tests/test_layout.py::test_contract_does_not_exist_yet` is there as the reminder, and
-deleting it is part of B1's diff.
+
+**There is no test enforcing that, and deliberately so.** An earlier
+`tests/test_layout.py::test_contract_does_not_exist_yet` asserted the file's absence as a
+reminder, and B1's diff was supposed to delete it. It was removed instead — **D-006**. It
+was green until Arsha created the file she is supposed to create, then red for the one
+action that was correct, with "delete the assertion" as its prescribed fix. **B1's diff
+therefore touches no test in `tests/test_layout.py`**; creating `src/contract.py` leaves
+the suite green. This file is the reminder now.
 
 ## File ownership — the disjointness *is* the parallel-work guarantee
 
-> **This table has THREE tiers, not two — see D-008.** Shared infrastructure
+> **This table has THREE tiers, not two — see D-008, now CLOSED.** Shared infrastructure
 > (`src/settings.py`, `src/llm.py`, `src/contract.py`, `src/priority.py`) is imported by
 > anyone and redefined by nobody: the lane rule read literally would force a second gateway
-> client inside `src/judge/`, which is the opposite of what it is for. **D-008 is open** —
-> `tests/test_layout.py` must be amended before A1 lands, because as written it will flag
-> Arsha's own intra-package imports as lane violations.
+> client inside `src/judge/`, which is the opposite of what it is for.
+>
+> **`tests/test_layout.py` now encodes all three tiers as module-level constants**
+> (`SHARED_INFRA`, `LANES`), so moving a file between tiers is a data change, not a logic
+> change. It permits intra-package imports, permits shared infra from every lane
+> (asserted *positively*, so a future tightening cannot silently forbid it), and forbids
+> cross-lane feature imports **in both directions** — including `dashboard/` importing
+> `src/pipeline`, which is A2's own DoD box and was previously unenforced.
 
 | Tier | Owner | Files |
 |------|-------|-------|
