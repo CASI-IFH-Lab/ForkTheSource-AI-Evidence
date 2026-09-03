@@ -64,3 +64,10 @@ tests: 189 passed
 publishes: parse_pdf(path, name=None) -> ParsedDocument(name: str, pages: list[str], tables: list, body_text: str, references_text: str, ref_start_page: int | None, notes: list[str]); ref_start_page is 1-BASED so pages[ref_start_page-1] is that page; run(pdf, config) now takes config as a REQUIRED positional
 notes: extract_pages/extract_text/locate_bibliography are internals now - import parse_pdf. Extraction passes x_tolerance_ratio=0.15 because pdfplumber's default glues words on both real papers. references_text carries a 26% appendix tail on sample.pdf - P2 must cut at the last entry marker. .gitignore's `data/` was swallowing tests/data fixtures; anchored to /data/.
 next: P2, ETA 3:00
+
+## 2:15 — P2 MERGED
+branch: ritik/p2-extractor -> main @ c9ab30b
+tests: 241 passed
+publishes: extract_references(doc, config=None, client=None) -> list[Reference]; extract_claims(doc, refs) -> list[Claim] (plain regex, fills Reference.cited_by_claims in place); split_entries(references_text) -> list[str] (plain code, no model); is_malformed(ref) -> bool. MALFORMED MECHANISM: derived predicate, is_malformed(ref) == (ref.title is None) - Reference forbids extra fields, so P5 stamps Indicator.MALFORMED on exactly the set is_malformed() returns True for. ref_id = R01..R40 per eval/golden/FORMAT.md; claim_id = C01.. same width rule.
+notes: 40 entries from sample.pdf, 34 from plos_sample.pdf, 0 malformed on either. Determinism gate PASSES but see D-101 - the guarantee is the disk cache, not the model; do not score `venue`. Cold 46s/40 entries, warm 0.006s. Bump prompts.PROMPT_VERSION when you touch the prompt, it is in the cache key.
+next: P3, ETA 3:15
