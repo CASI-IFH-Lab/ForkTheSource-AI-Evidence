@@ -205,46 +205,49 @@ Applying P5 step 3's mapping in order to a wrong-year reference:
    weak (< 0.70). **Branch does not apply.**
 5. `else` → **`needs_check`.** ✓
 
-And the indicator set is empty, because under the constraint below `version_mismatch` does
-not fire on a year difference alone, and nothing else in the closed vocabulary describes a
-year error.
+And the indicator set is empty, because under the rule below (D-020) `version_mismatch`
+fires only when exactly one record is a preprint - never on a year difference alone - and
+nothing else in the closed vocabulary describes a year error.
 
 ### A promise the corpus makes to P5 step 2
 
-> **`version_mismatch` MUST require VENUE divergence. Year divergence alone must not set
-> it.**
+> **`version_mismatch` fires when exactly ONE of the two records is a preprint** - a
+> preprint-server venue name (arXiv, bioRxiv, medRxiv, SSRN, or similar) or the presence of
+> an arXiv ID. It does **not** fire on venue string divergence, and it does **not** fire on
+> year divergence.
 >
-> **Raise this at Sync 1.** It constrains code Ritik has not written yet, and it is the
-> only place in this catalog where the corpus imposes a requirement on the pipeline rather
-> than merely describing it.
+> **Ruled - see D-020 in [`docs/decisions.md`](decisions.md).** This is the only place in
+> this catalog where the corpus imposes a requirement on the pipeline rather than merely
+> describing it, and it constrains **P5 step 2**, which is unwritten. **It is on the Sync 1
+> agenda** so that Ritik implements it deliberately rather than discovering it from a red
+> eval run.
 
-Why it has to be true: a year that differs while the venue is unchanged is a
-**transcription error** — somebody typed 2021 for a 2019 paper. A preprint and its journal
-version are a different thing entirely: same work, *different venue*, usually a different
-year as a side effect. The plan's own wording for the indicator is "preprint vs journal",
-and the venue is what makes it a preprint.
+Why the indicator cannot fire on year alone: a year that differs while the venue is
+unchanged is a **transcription error** - somebody typed 2021 for a 2019 paper. A preprint
+and its journal version are a different thing entirely: the same work, in a *different
+venue*, usually with a different year as a side effect. The plan's own wording for the
+indicator is "preprint vs journal", and it is the preprint-ness that makes it one.
 
-What breaks without it: P5 emits `version_mismatch` on every wrong-year reference,
-`D07`-`D09` all come back as `needs_check` + `[version_mismatch]` against a label of
-`needs_check` + `[]`, and — because indicator matching is exact-set — **all three score as
-misses**. Recall drops to 18/21 and fails the plan's ≥ 19/21 target, for a defect the
-pipeline actually classified correctly. The status would be right and the metric would say
-no.
+What breaks if year alone sets it: P5 emits `version_mismatch` on every wrong-year
+reference, `D07`-`D09` all come back as `needs_check` + `[version_mismatch]` against a
+label of `needs_check` + `[]`, and - because indicator matching is exact-set - **all three
+score as misses**. Recall drops to 18/21 and fails the plan's >= 19/21 target, for a defect
+the pipeline actually classified correctly. The status would be right and the metric would
+say no.
 
-**One concern with the ruling as written, for Sync 1.** "Venue divergence" is the right
-idea but a fragile test. Venue strings are the least normalised field in any bibliography —
-`Journal of Machine Learning Research` versus `J. Mach. Learn. Res.` are the same venue and
-differ on every character comparison. If P5 implements this as venue string inequality, it
-will fire `version_mismatch` on correctly-cited references throughout the corpus, and there
-is **no venue threshold in `config.yaml`** to tune it against: the four keys are
-`title_strong`, `title_weak`, `author_strong`, `year_tolerance`.
-
-**Recommendation: define it categorically instead** — `version_mismatch` fires when
-**exactly one** of the two records is a preprint (arXiv, bioRxiv, medRxiv, SSRN, or another
-preprint server), determined from the venue string or the presence of an arXiv ID. That is
-a boolean, needs no similarity threshold and no new config key, is immune to abbreviation
-noise, and encodes the plan's actual words — "preprint vs journal" — rather than a proxy
-for them. It also keeps every label in this catalog exactly as written.
+**Why categorical and not a venue-similarity test.** An earlier draft of this section
+required *venue divergence*, and that ruling was **reversed**; D-020 records the reversal.
+Venue strings are the least normalised field in any bibliography - `Journal of Machine
+Learning Research` and `J. Mach. Learn. Res.` are the same venue and differ on every
+character comparison. Implemented as venue string inequality, `version_mismatch` would fire
+on **correctly-cited references throughout the corpus, including the clean control**, which
+is the one paper whose false-accusation count has to be zero. Implemented as venue
+*similarity*, it needs a threshold, and there is none: `config.yaml`'s four matching keys
+are `title_strong`, `title_weak`, `author_strong` and `year_tolerance`, so a similarity test
+means either a fifth key or a hardcoded comparison. The categorical test is a boolean, needs
+no threshold and no new key, is immune to abbreviation noise, and encodes the plan's actual
+words rather than a proxy for them. Every label in this catalog is identical under either
+formulation - only the code that has to satisfy them changes.
 
 The corpus cannot absorb this constraint instead. Labelling wrong-year as `needs_check` +
 `[version_mismatch]` to match whatever P5 happens to do would make the wrong-year and
@@ -549,6 +552,25 @@ Two notes for R1:
 - **Pick a control in the same field and of similar length** to the three spiked papers. A
   control with five references proves very little.
 
+### `eval/corpus/originals/` is TRACKED, not gitignored
+
+The untouched originals are committed to the repo. `.gitignore` excludes `eval/outputs/`
+only; nothing under `eval/corpus/` is ignored, and that is deliberate on two counts:
+
+- **R1 step 3 diffs each spiked PDF against its original**, so the original has to be in the
+  tree for the diff to be reproducible by anyone other than the person who injected the
+  defects.
+- **R2 may check that `source.origin_file` exists.** With the originals ignored, that check
+  passes on the machine that wrote the labels and fails on every clone — the worst kind of
+  green.
+
+**If any original exceeds ~10 MB, do not commit the PDF.** Store the **arXiv ID (or DOI)
+plus a fetch script** under `eval/corpus/originals/` instead, and point `source.origin_file`
+at the stub. A 10 MB binary in git history is permanent, and this is a hackathon repo that
+three people clone. The stub has to be enough to re-fetch the exact original: identifier,
+version, and the retrieval date. Prefer papers small enough to avoid this — one more reason
+to pick arXiv PDFs over publisher-typeset ones.
+
 ### Legitimate unresolvable entries in the corpus
 
 Fill at R1. Recorded here so a future reader does not mistake them for unexplained gaps.
@@ -575,12 +597,12 @@ tabulated at the end of
 Three things still need a person rather than a document:
 
 1. **Raise the P5 constraint at Sync 1** (section 3, *A promise the corpus makes to P5 step
-   2*). `version_mismatch` must require venue divergence, not year alone, or all three
-   wrong-year defects score as misses on a correct classification. There is a note there
-   recommending the categorical preprint-vs-journal test over a venue-string comparison,
-   because there is no venue threshold in `config.yaml` and venue strings are the least
-   normalised field in a bibliography. That recommendation is Ritik's, and P5 is Ritik's
-   module — but the corpus depends on the outcome, so you should be in the room.
+   2*). `version_mismatch` fires when **exactly one record is a preprint**, not on venue
+   divergence and not on year alone — ruled as **D-020**, which reversed an earlier
+   venue-divergence ruling. If P5 sets the indicator on year divergence instead, all three
+   wrong-year defects score as misses on a correct classification. P5 is Ritik's module and
+   it is unwritten, so this is the one item here that constrains someone else's code — but
+   the corpus depends on the outcome, so you should be in the room.
 
 2. **Paper selection.** Nothing here assumes a field, a venue, or a citation style. Two
    places where it matters: section 6's orphan diagnostic depends on knowing whether your
