@@ -93,3 +93,29 @@ NEED: P6's progress callback to emit exactly these seven stage_name strings — 
 WHY: the AIR progress strip keys on those exact strings, so a mismatch lights no chip, raises no error, and silently kills the 0:20 demo beat where the AIR platform becomes visible — note the key is verdict, not judge, even though the chip is labelled "judge".
 UNBLOCKED MEANWHILE BY: in A2 the strip renders statically from the ledger, reading the judge model off Verdict.judge_model, so nothing is blocked yet.
 BLOCKS ME AT: 4:30, when A3 wires the live callback. Full entry: docs/decisions.md D-204.
+
+## 4:05 — A1 MERGED
+branch: arsha/a1-judge -> main @ ab06a80
+tests: 397 passed, 1 skipped (the live AIR test, gateway unreachable at merge time — D-203)
+publishes: judge_reference(ref, ev, fallback_fn=None) -> Verdict (NEVER raises) · gate_batch(verdicts, total: int) -> list[Verdict] · stub_status(ev) -> tuple[str, float, str] · src.judge.prompts.JUDGE_SYSTEM_PROMPT
+notes: judge_model names the path on every verdict — the configured model, fallback:rule_based, fallback:stub, or gate-forced:<original>. Gate is three code checks, no model call (D-200 closes D-004). D-201 enforces the retraction floor and the parse-noise ceiling in code. D-202 switches off the SDK's own retry layer. @roy R3 can attack the real prompt now, offline.
+next: A2 merge, then A3 once P6 lands
+
+## 4:10 — A2 MERGED
+branch: arsha/a2-dashboard -> main @ 9dbcd55
+tests: 445 passed (443 passed, 2 skipped with the AIR credentials removed)
+publishes: render_ledger(ledger: Ledger) -> None · dashboard.theme.STAGE_KEYS · summary_rows/headline/progress_stages/worklist_rows/signal_rows/entry_panel/lookup_url, all pure functions over a Ledger
+notes: streamlit run dashboard/app.py renders any Ledger JSON offline. Four counters, the seven-chip AIR strip naming the model per stage, top-3 worklist, every entry as an expander. doi_match renders three states; version_mismatch is deliberately not red. D-204 pins the seven stage keys P6's progress callback must emit — that REQUEST to @ritik is still open.
+next: A3 integration, blocked on P6
+
+## 4:10 — A1 OBJECTION
+tests: 445 passed
+publishes: nothing new
+notes: caught while merging A2 — the A1 test test_a_missing_api_key_falls_back_rather_than_raising patched dotenv.load_dotenv, but src/llm.py does "from dotenv import load_dotenv", so the patched name was never the one called. get_client() read .env back off disk and that "offline" test made a live gateway call, passing only on runs where the gateway happened to be down. Fixed in the A2 merge; the target is src.llm.load_dotenv. Worth knowing in every lane: patch the name in the module that CALLS it, not the module that defines it.
+next: A3 integration, blocked on P6
+
+## 4:11 — A2 OBJECTION
+tests: 445 passed
+publishes: nothing new
+notes: heads-up for @ritik and @roy, not a request — with CROSSREF_MAILTO unset, 21 tests in tests/test_resolvers.py fail rather than skip. That is D-007 working as designed (crossref_mailto() must raise), but a stranger cloning the repo before setting .env sees 21 red instead of a clear message. Ritik's call whether that matters before the demo; my lane is unaffected and stays green with only the AIR credentials removed.
+next: A3 integration, blocked on P6
