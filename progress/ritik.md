@@ -85,3 +85,10 @@ tests: 444 passed, 1 skipped
 publishes: nothing new - docs only. docs/team_handoff_docs/ now holds ADDENDUM_hallucination_framing.md and REPLAN_T_minus_2.md verbatim, and each individual doc carries a CURRENT STATE banner at the top.
 notes: re-pull and re-paste FOUR docs before generating the next prompt. Two facts in the brief were already stale when I applied it: the count is 444+1 skipped not 327, and A1/A2/R1 all merged - Arsha is on A3 blocked on P6, gate.py did NOT slip. Recorded as measured. @arsha's A2 OBJECTION is mine to answer: with CROSSREF_MAILTO unset, 21 tests in tests/test_resolvers.py FAIL rather than skip.
 next: P5, ETA 5:25
+
+## 5:05 — P5 MERGED
+branch: ritik/p5-evidence -> main @ 1102b05
+tests: 492 passed, 1 skipped
+publishes: build_evidence(ref, resolved, ledger_refs, malformed_ref_ids=frozenset()) -> MatchEvidence (src.matching.evidence); rule_based_status(ev) -> (status, confidence, rationale) (src.matching.rules). malformed_ref_ids is an OPTIONAL trailing kwarg so the frozen 3-arg signature still works - a caller that omits it gets no malformed indicator. resolved.raw["_lookup_branch"] is now one of doi | arxiv_id | title_search (D-104) and the classifier gates on it.
+notes: 21 resolver tests now SKIP without CROSSREF_MAILTO (Arsha's A2 OBJECTION closed) - fresh clone is 422 passed, 23 skipped, 0 failed. D-104 title-search gate, D-105 year_delta abs, D-106 closes D-020's P5 half, D-107 ADDENDUM adoption. TWO FINDINGS FOR THE REVIEWER, not patched: (1) 16 of 74 CORRECT citations classify as conflict because our own title search returned the wrong paper - R2's baseline will show ~22% spurious conflicts; (2) line-break hyphens corrupt titles ("im-age", "sci-ence"), which is what poisons those searches - P2's fix, and _rejoin knows where it joined. OpenAlex preprint promotion is in but changes NOTHING on our corpus: nothing resolves via OpenAlex.
+next: P6, ETA 5:35
