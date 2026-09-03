@@ -71,3 +71,10 @@ tests: 241 passed
 publishes: extract_references(doc, config=None, client=None) -> list[Reference]; extract_claims(doc, refs) -> list[Claim] (plain regex, fills Reference.cited_by_claims in place); split_entries(references_text) -> list[str] (plain code, no model); is_malformed(ref) -> bool. MALFORMED MECHANISM: derived predicate, is_malformed(ref) == (ref.title is None) - Reference forbids extra fields, so P5 stamps Indicator.MALFORMED on exactly the set is_malformed() returns True for. ref_id = R01..R40 per eval/golden/FORMAT.md; claim_id = C01.. same width rule.
 notes: 40 entries from sample.pdf, 34 from plos_sample.pdf, 0 malformed on either. Determinism gate PASSES but see D-101 - the guarantee is the disk cache, not the model; do not score `venue`. Cold 46s/40 entries, warm 0.006s. Bump prompts.PROMPT_VERSION when you touch the prompt, it is in the cache key.
 next: P3, ETA 3:15
+
+## 3:10 — P3+P4 MERGED
+branch: ritik/p3-p4-resolvers -> main @ 3b036b9
+tests: 327 passed
+publishes: resolve(ref, notes=None) -> ResolvedSource | None (src.resolvers.resolver); make_key(url, params) / cache_get(key) / cache_set(key, payload) (src.resolvers.cache). BREAKING P2 CHANGE per D-102: extract_references(doc) now returns ExtractionResult(references, malformed_ref_ids) - a NamedTuple, so `refs, malformed = extract_references(doc)` works - and is_malformed() is DELETED. P5 stamps Indicator.MALFORMED on ref_ids in malformed_ref_ids, NOT on title being None.
+notes: 40/40 and 34/34 refs resolved live, zero None. is_preprint True/False/None = 25/6/9 (arXiv paper) and 0/25/9 (PLOS). Warm resolve 0.41s vs 64s cold. D-103 records the waterfall + why crossref.py is imported lazily. Teammates need CROSSREF_MAILTO in .env or every Crossref lookup falls through to OpenAlex (one-time stderr warning says so). Fixed an arXiv namespace bug: doi/journal_ref are in the arxiv: namespace, not atom: - that is P5's version_mismatch input. Title-branch results are CANDIDATES, not confirmations - P5 must gate on title_similarity.
+next: P5, ETA 4:10
