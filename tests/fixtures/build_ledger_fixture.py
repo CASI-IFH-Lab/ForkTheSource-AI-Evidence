@@ -181,6 +181,16 @@ def _build_entries() -> list[LedgerEntry]:
 
     # R02 -- verified, version_mismatch: preprint cited, journal version
     # resolved. Must not be conflict -- this is the #1 false-alarm risk.
+    #
+    # This is the row D-020 keys on, so preprint-ness is set EXPLICITLY on
+    # both sides and exactly one of them is a preprint:
+    #   citation side  -> arxiv_id="1810.04805"  (a preprint)
+    #   resolved side  -> is_preprint=False      (the NAACL record)
+    # "Exactly one side is a preprint" is the whole test. It is NOT a venue
+    # comparison: live API responses (D-036) show Crossref preprints have an
+    # empty container-title, arXiv is absent from Crossref entirely, and
+    # OpenAlex returns source=null for this very NAACL record -- so a venue
+    # test would detect nothing here, on the one row it exists for.
     reference = Reference(
         ref_id="R02",
         raw_text='Devlin, J. et al. "BERT: Pre-training of Deep Bidirectional '
@@ -199,6 +209,10 @@ def _build_entries() -> list[LedgerEntry]:
         year=2019,
         doi="10.18653/v1/N19-1423",
         venue="NAACL-HLT 2019",
+        # The resolved record is the published version, and the provider
+        # SAYS SO -- False here means "the provider says not a preprint",
+        # not "we did not check". D-036.
+        is_preprint=False,
         url="https://aclanthology.org/N19-1423/",
         raw={"anthology_id": "N19-1423"},
     )

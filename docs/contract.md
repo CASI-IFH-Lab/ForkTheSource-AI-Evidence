@@ -38,13 +38,34 @@ sides of a DOI comparison are like-for-like and a provider returning
 `https://doi.org/10.1/X` never reads as a mismatch against a citation
 printing `10.1/x` (**D-035**).
 
-> **Note for P5:** `ResolvedSource` has **no `arxiv_id` field**, while
-> `Reference` does. D-020 identifies a preprint by "a preprint-server venue
-> name **or** the presence of an arXiv ID", so on the *resolved* side only
-> the venue-name half of that test is available; an arXiv id that a provider
-> returns arrives inside `raw`. Deliberate — the contract stays minimal and
-> the field is addable later with an entry — but worth knowing before
-> writing the preprint check.
+It also carries **`is_preprint`** and **`arxiv_id`**, both optional
+(**D-036**). `is_preprint` is **tri-state**, with the same discipline as
+`doi_match`: `True` = the provider says preprint, `False` = the provider
+says not, `None` = **the provider did not say**. `None` must not be read as
+`False` — that would turn "we could not tell" into "definitely published",
+which is the assertion D-020's test must never make on missing data.
+
+> **Note for P5 — set `is_preprint` from provider-native signals, never
+> from `venue`.** Live API responses (quoted in full in **D-036**) show
+> `venue` cannot carry this: Crossref preprints return
+> `container-title = []` with the server name in `institution` and
+> `publisher` reading `'openRxiv'`; arXiv DOIs are **404 in Crossref**
+> entirely (they are DataCite); and for a work with both versions the
+> resolved record's venue is either the conference name or, in OpenAlex,
+> `null` — so a venue test can **never** detect the version pair it exists
+> for. The rules that do work:
+>
+> | provider | rule |
+> |----------|------|
+> | Crossref | `type == "posted-content"` (or `subtype == "preprint"`) |
+> | OpenAlex | `primary_location.version == "submittedVersion"` **or** `primary_location.source.type == "repository"` |
+> | arXiv | always `True` |
+>
+> D-020 is then "**exactly one side is a preprint**" — `Reference.arxiv_id`
+> on the citation side, `ResolvedSource.is_preprint` on the resolved side.
+> If both are `None`, the indicator does not fire. `arxiv_id` is free for
+> the arXiv resolver and optional elsewhere; the contract does not parse it
+> out of `raw`.
 
 **MatchEvidence** — the comparison between a `Reference` and its
 `ResolvedSource` (or the absence of one). Written by `src/matching/`.

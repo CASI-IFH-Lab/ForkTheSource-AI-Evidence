@@ -125,6 +125,24 @@ class Claim(_ContractModel):
 
 
 class ResolvedSource(_ContractModel):
+    """One provider's record for a reference.
+
+    ``is_preprint`` is TRI-STATE, with the same discipline as
+    ``MatchEvidence.doi_match`` (D-034):
+
+    ``True``   the provider says this record is a preprint
+    ``False``  the provider says it is not
+    ``None``   the provider did not say
+
+    ``None`` must NOT be read as ``False``. Reading it that way turns "we
+    could not tell" into "definitely a published version", which is exactly
+    the assertion D-020's test must not make on missing data.
+
+    Resolvers set it from provider-native signals, never by string-matching
+    ``venue`` - live API responses show ``venue`` is unusable for this (see
+    D-036).
+    """
+
     provider: str
     title: str | None = None
     authors: list[str] = Field(default_factory=list)
@@ -132,6 +150,8 @@ class ResolvedSource(_ContractModel):
     doi: str | None = None
     venue: str | None = None
     is_retracted: bool = False
+    is_preprint: bool | None = None
+    arxiv_id: str | None = None
     url: str | None = None
     raw: dict
 

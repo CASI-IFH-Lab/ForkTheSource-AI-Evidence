@@ -210,6 +210,31 @@ def test_doi_mismatch_records_doi_match_false_not_none(fixture_ledger):
         )
 
 
+def test_version_mismatch_row_has_exactly_one_preprint_side(fixture_ledger):
+    """D-020 via D-036: the indicator keys on preprint-ness, not on venue.
+
+    Pinned on the fixture so the "exactly one side" reading is demonstrated
+    rather than only described, and so a future edit that drops is_preprint
+    from the resolved side fails here.
+    """
+    matches = [
+        e for e in fixture_ledger.entries if "version_mismatch" in e.evidence.indicators
+    ]
+    assert matches, "no entry carries the version_mismatch indicator"
+    for entry in matches:
+        citation_is_preprint = entry.reference.arxiv_id is not None
+        resolved = entry.evidence.resolved
+        assert resolved is not None
+        assert resolved.is_preprint is False, (
+            f"{entry.reference.ref_id}: the resolved side must SAY it is not a "
+            f"preprint, got {resolved.is_preprint!r} (None would mean the "
+            "provider did not say -- D-036)"
+        )
+        assert citation_is_preprint != bool(resolved.is_preprint), (
+            "exactly one side must be a preprint"
+        )
+
+
 def test_malformed_entry_keeps_raw_text(fixture_ledger):
     matches = [
         entry for entry in fixture_ledger.entries if "malformed" in entry.evidence.indicators
@@ -328,6 +353,46 @@ def test_resolved_source_doi_normalizes_on_assignment():
 
 def test_resolved_source_doi_none_stays_none():
     assert ResolvedSource(provider="crossref", raw={}).doi is None
+
+
+@pytest.mark.parametrize("value", [True, False, None])
+def test_is_preprint_accepts_all_three_states(value):
+    """D-036: tri-state, like doi_match. All three are legal values."""
+    assert ResolvedSource(provider="openalex", is_preprint=value, raw={}).is_preprint is value
+
+
+def test_is_preprint_defaults_to_none_not_false():
+    """None means "the provider did not say", NOT "not a preprint".
+
+    Mirrors test_doi_mismatch_records_doi_match_false_not_none, which pins
+    the same None-vs-False distinction on the other tri-state field.
+    Defaulting to False would let
+    P5 conclude "definitely a published version" from a provider that said
+    nothing, and D-020's indicator would then fire or not fire on absent
+    evidence rather than on a real signal.
+    """
+    resolved = ResolvedSource(provider="crossref", raw={})
+    assert resolved.is_preprint is None
+    assert resolved.is_preprint is not False
+
+
+def test_is_preprint_none_is_distinguishable_from_false():
+    silent = ResolvedSource(provider="crossref", raw={})
+    says_not_preprint = ResolvedSource(provider="crossref", is_preprint=False, raw={})
+    assert silent.is_preprint is None
+    assert says_not_preprint.is_preprint is False
+    # The distinction must survive a JSON round trip, since it crosses a
+    # lane boundary as serialised ledger data.
+    assert silent.model_dump(mode="json")["is_preprint"] is None
+    assert says_not_preprint.model_dump(mode="json")["is_preprint"] is False
+
+
+def test_resolved_source_arxiv_id_round_trips():
+    resolved = ResolvedSource(provider="arxiv", arxiv_id="2005.14165", is_preprint=True, raw={})
+    dumped = resolved.model_dump(mode="json")
+    assert dumped["arxiv_id"] == "2005.14165"
+    assert ResolvedSource.model_validate(dumped).arxiv_id == "2005.14165"
+    assert ResolvedSource(provider="crossref", raw={}).arxiv_id is None
 
 
 def test_retracted_source_without_indicator_raises():

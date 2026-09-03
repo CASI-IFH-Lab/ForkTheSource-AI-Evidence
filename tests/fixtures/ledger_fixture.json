@@ -78,6 +78,7 @@
         ],
         "ref_id": "R01",
         "resolved": {
+          "arxiv_id": null,
           "authors": [
             "Ashish Vaswani",
             "Noam Shazeer",
@@ -85,6 +86,7 @@
             "Jakob Uszkoreit"
           ],
           "doi": null,
+          "is_preprint": null,
           "is_retracted": false,
           "provider": "arxiv",
           "raw": {
@@ -138,6 +140,7 @@
         ],
         "ref_id": "R02",
         "resolved": {
+          "arxiv_id": null,
           "authors": [
             "Jacob Devlin",
             "Ming-Wei Chang",
@@ -145,6 +148,7 @@
             "Kristina Toutanova"
           ],
           "doi": "10.18653/v1/n19-1423",
+          "is_preprint": false,
           "is_retracted": false,
           "provider": "acl-anthology",
           "raw": {
@@ -201,6 +205,7 @@
         ],
         "ref_id": "R03",
         "resolved": {
+          "arxiv_id": null,
           "authors": [
             "Kaiming He",
             "Xiangyu Zhang",
@@ -208,6 +213,7 @@
             "Jian Sun"
           ],
           "doi": "10.1109/cvpr.2016.90",
+          "is_preprint": null,
           "is_retracted": false,
           "provider": "crossref",
           "raw": {
@@ -264,6 +270,7 @@
         ],
         "ref_id": "R04",
         "resolved": {
+          "arxiv_id": null,
           "authors": [
             "Mandeep R. Mehra",
             "Sapan S. Desai",
@@ -271,6 +278,7 @@
             "Amit N. Patel"
           ],
           "doi": "10.1016/s0140-6736(20)31180-6",
+          "is_preprint": null,
           "is_retracted": true,
           "provider": "crossref",
           "raw": {
@@ -407,6 +415,7 @@
         ],
         "ref_id": "R07",
         "resolved": {
+          "arxiv_id": null,
           "authors": [
             "Ian J. Goodfellow",
             "Jean Pouget-Abadie",
@@ -414,6 +423,7 @@
             "Bing Xu"
           ],
           "doi": null,
+          "is_preprint": null,
           "is_retracted": false,
           "provider": "arxiv",
           "raw": {
@@ -467,6 +477,7 @@
         ],
         "ref_id": "R08",
         "resolved": {
+          "arxiv_id": null,
           "authors": [
             "Jacob Devlin",
             "Ming-Wei Chang",
@@ -474,6 +485,7 @@
             "Kristina Toutanova"
           ],
           "doi": "10.18653/v1/n19-1423",
+          "is_preprint": null,
           "is_retracted": false,
           "provider": "acl-anthology",
           "raw": {

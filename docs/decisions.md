@@ -57,6 +57,7 @@ And one in **B1** itself:
 
 | ID | Title |
 |----|-------|
+| D-036 | `ResolvedSource` carries `is_preprint` and `arxiv_id`; `venue` is not a preprint signal |
 | D-035 | `MatchEvidence` refuses a retracted source without the indicator, and both DOIs normalise identically |
 | D-034 | `doi_match` is tri-state: `None` means "no DOI to compare", not "the DOIs disagree" |
 | D-033 | `Indicator` is an enum, not `list[str]` — a typo is a load-time error |
@@ -105,6 +106,108 @@ And one in **B1** itself:
 > Every one of them constrains a module nobody has written yet, which is why they are here
 > rather than left as prose in the file that established them. That is the standing rule
 > working late rather than not at all.
+
+---
+
+## D-036 — `ResolvedSource` carries `is_preprint` and `arxiv_id`; `venue` is not a preprint signal
+
+**Date** 2026-09-03 (B1) · **Decided by** Arsha, on Ritik's question and live API evidence ·
+**Status**: active
+
+**Affects**: **P4** (must set `is_preprint`), **P5** (implements D-020 with it), A1.
+`src/contract.py`, `docs/contract.md`. **Supersedes** the "Note for P5" paragraph in
+`docs/contract.md`, which said only the venue half of D-020's test was available.
+
+**The question**, from Ritik's review of B1: `ResolvedSource` had no `arxiv_id`, while
+`Reference` did. D-020 identifies a preprint by "a preprint-server venue name **or** the
+presence of an arXiv ID", so on the resolved side only the venue half looked available. Is
+`venue` a reliable preprint signal? If yes, the contract ships unchanged. If no, the field
+is one line **before** the Sync 1 freeze and a three-owner change after it.
+
+**Decision**: `venue` is **not** a preprint signal. `ResolvedSource` gains two optional
+fields:
+
+```python
+is_preprint: bool | None = None
+arxiv_id:    str  | None = None
+```
+
+`is_preprint` is **tri-state**, with the same discipline as `doi_match` (D-034): `True` =
+the provider says preprint, `False` = the provider says not, `None` = **the provider did not
+say**. `None` must not be read as `False`. Resolvers set it from **provider-native signals**,
+never by string-matching a venue:
+
+| provider | rule |
+|----------|------|
+| Crossref | `type == "posted-content"` (or `subtype == "preprint"`) |
+| OpenAlex | `primary_location.version == "submittedVersion"` **or** `primary_location.source.type == "repository"` |
+| arXiv | always `True` |
+
+`arxiv_id` is free for the arXiv resolver and optional elsewhere. The contract does **not**
+parse it out of `raw`; a resolver that has it sets it, and one that does not leaves `None`.
+
+**Why**: This was settled from live API responses, not from documentation, because the
+documentation reads as though venue would work. It does not, in four separate ways.
+
+**1. Crossref preprints have an empty venue.** `10.1101/2020.03.22.002386` (bioRxiv) returns
+`type='posted-content'`, `subtype='preprint'`, and **`container-title = []`**. The server
+name is not in the venue at all — it is in `institution=[{'name': 'bioRxiv'}]`, while
+`publisher` reads `'openRxiv'`, which is not a string any "arXiv/bioRxiv/medRxiv/SSRN" name
+list would match. A second Crossref preprint (`10.2196/preprints.40992`) is worse:
+`container-title = None`, **no `institution` key at all**, `publisher = 'JMIR Publications
+Inc.'` — no preprint-server name anywhere in the record.
+
+**2. arXiv is not in Crossref at all.** `https://api.crossref.org/works/10.48550/arXiv.2005.14165`
+and the same call for BERT's `10.48550/arXiv.1810.04805` both return **HTTP 404**. arXiv DOIs
+are DataCite-registered; DataCite returns `publisher='arXiv'`,
+`types.resourceTypeGeneral='Preprint'`, and **`container = {}`** — again an empty venue.
+
+**3. For the version-pair case D-020 exists for, the venue names the wrong thing or
+nothing.** Resolving BERT through Crossref by title gives the NAACL record
+(`10.18653/v1/n19-1423`, `type='proceedings-article'`) whose `container-title` is the
+conference proceedings — it names the **journal side**, never the preprint. Through OpenAlex
+the same work returns `primary_location.source = null` outright, with
+`locations[0].source.display_name = None`. So a venue test on the R02 row sees either a
+conference name or nothing, and **can never detect that a preprint is involved**. That is the
+exact scenario the indicator exists for, so a venue-based implementation of D-020 would fail
+on the case it was written for.
+
+**4. The provider-native flags, by contrast, are unambiguous and present.** The OpenAlex
+preprint record returns `type='preprint'`, `primary_location.version='submittedVersion'`,
+`primary_location.source.type='repository'`, `is_published=False`. The published record
+returns `version='publishedVersion'`, `is_published=True`, `type='conference-paper'`. Those
+are booleans in all but name; the venue is a string that is variously `[]`, `None`, a
+conference title, or absent.
+
+`arxiv_id` is added alongside because **OpenAlex has no first-class arXiv id either**: the
+preprint's `ids` keys are `['openalex', 'doi', 'mag']`, and the identifier is only
+recoverable by parsing `ids.doi` (`10.48550/arxiv.2005.14165`), `primary_location.id`
+(`pmh:oai:arXiv.org:2005.14165`) or a PDF URL. Parsing those inside the contract would put
+provider-specific string surgery in the one module that must stay provider-agnostic, so the
+resolver that already knows the id sets it instead.
+
+The rejected alternative was to ship the contract unchanged and have P5 string-match venues
+against a preprint-server name list. Rejected on evidence 1-3: it would miss every Crossref
+preprint (empty venue), miss arXiv entirely (absent from Crossref), and fail on the
+version-pair row. It would also reintroduce exactly the fragile string comparison **D-020
+itself rejected** — that entry reversed an earlier venue-divergence rule for the same reason,
+and a venue *name* test is the same mistake wearing different clothes.
+
+**Timing is the whole reason this is one line today.** The contract freezes at Sync 1 and the
+vocabulary and shape then need all three owners to change. Adding two optional fields before
+the freeze costs a field declaration and two tests; discovering the gap at P5 costs a
+contract amendment, a fixture regeneration and a renegotiation with Roy's labels already
+written.
+
+**Consequence**: **Ritik** — P4 sets `is_preprint` from the three provider rules in the table
+above, and leaves it `None` when a provider says nothing rather than guessing `False`. The
+arXiv resolver sets `arxiv_id`; other resolvers may leave it `None`. **P5 implements D-020 as
+"exactly one side is a preprint"** — `reference.arxiv_id`/preprint venue on the citation side,
+`resolved.is_preprint` on the resolved side — and **must not** branch on venue strings. If
+both sides are `None`, the indicator does not fire; absence of evidence is not evidence of a
+version pair. **Arsha** — A1 must not read `is_preprint is None` as `False`. The B1 fixture
+sets it explicitly on both sides of R02 so the "exactly one" reading is demonstrated rather
+than described.
 
 ---
 
