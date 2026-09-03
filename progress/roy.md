@@ -87,3 +87,14 @@ notes: FORMAT.md item 8 forbids a `defect` string on an injected:false row and t
        are recorded in docs/defect_catalog.md instead of in the label rows. Implemented as
        the format specifies; noting it because a reader of the label file alone cannot see
        why those three are there.
+
+## 4:40 — R2 STARTED
+tests: 444 passed, 1 skipped (main @ 4106687, as measured by @ritik at f5aa41f; not re-run for this block)
+publishes: nothing yet — R2-MINIMAL in progress on roy/r2-harness
+notes: clock is REPLAN-relative, i.e. this is T+4:40; the heading omits the literal "T+"
+       because update_status.py parses the clock as H:MM and an unparseable clock sorts
+       last in STATUS.md. Two overdue REPLAN §0 steps done in this clone: install_hooks.sh
+       run (core.hooksPath -> .githooks), and this block is the first push proving the
+       hooks and the Action work from my machine.
+next: R2-MINIMAL — --fixtures only: ref_id hard-error join, exact-set indicators,
+      defect_id recall, the two release gates, plain-text metrics table. ETA 5:30.
