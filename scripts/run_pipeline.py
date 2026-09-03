@@ -23,6 +23,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.contract import STATUSES, Ledger  # noqa: E402
+from src import pipeline  # noqa: E402
 from src.pipeline import PipelineIntegrityError, ledger_path_for, run  # noqa: E402
 
 #: How many worklist rows the CLI prints. The worklist is sorted by priority, so this is
@@ -68,6 +69,13 @@ def _print_summary(ledger: Ledger, path: Path) -> None:
         print(f"  {ref.ref_id}  {entry.priority:.3f}  {entry.verdict.status}")
         print(f"        {_shorten(ref.title or ref.raw_text, 88)}")
         print(f"        {_shorten(entry.verdict.rationale)}")
+
+    if pipeline.last_run_notes:
+        # D-109. A dropped identifier is the one thing this tool must never do quietly,
+        # so it is printed above the ledger path rather than buried in a log.
+        print(f"\nextraction corrections ({len(pipeline.last_run_notes)})")
+        for note in pipeline.last_run_notes:
+            print(f"  ! {_shorten(note, 110)}")
 
     print(f"\nledger  {path}")
 

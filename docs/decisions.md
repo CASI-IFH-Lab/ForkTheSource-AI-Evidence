@@ -124,6 +124,77 @@ And three at the B1 review itself (`main` `b1d7f65`):
 
 ---
 
+## D-109 — The extractor may not return an identifier that is not printed in the reference
+
+**Date** 2026-09-03 (P7 branch) · **Decided by** Ritik · **Status**: active
+
+**Affects**: `src/ingest/extractor.py` (`_reference_from_reply`, and a new optional
+`notes=` on `extract_references`), every resolver branch downstream of it, Roy's D20 trap
+row, and the demo narration.
+
+**Decision**: after a reply validates into a `Reference` and before it is returned, any
+`doi` or `arxiv_id` the model supplied that does **not** appear in that entry's printed
+`raw_text` is set to `None` and recorded. Comparison is on provenance, not format: both
+sides are casefolded with **all** whitespace removed, and the decorating prefixes
+(`arXiv:`, `doi:`, `https://doi.org/`, `abs/`, `CoRR abs/`, an arXiv `vN` suffix) are
+stripped, so `"https://doi.org/10.1000/XYZ"` matches a printed `10.1000/xyz` and
+`"1409.0473"` matches a printed `CoRR, abs/1409.0473`. Whitespace is *removed* rather than
+collapsed because pdfplumber renders a real PLOS DOI as `10. 1016/j.ajpath.2014.11.001`.
+
+The entry is **not** marked `malformed`. `malformed` (D-102) means the extraction attempt
+produced nothing usable and it drives P5's indicator; an entry whose title, authors and
+year are correct and whose identifier was invented is a good extraction with one bad
+field. With the field gone it resolves by title like any other reference that printed no
+identifier.
+
+`year` is deliberately **not** guarded. It cannot cause a wrong resolution, which is the
+harm this exists to prevent, and a containment test over it fires on correct extractions —
+a year normalised out of `(2016).` is fine, one recovered from surrounding prose is not
+distinguishable here. Checking it would produce noise and catch nothing.
+
+**Why**: measured, on our own demo paper. `eval/corpus/paper1.pdf` R24 prints
+`"M. Śmieja, B. C. Geiger, Semi-supervised cross-entropy clustering with information
+bottleneck constraint, arXiv preprint (2017)."` — **there is no identifier in that text**.
+The extractor returned `arxiv_id: 1706.05555`. That is a real arXiv paper, about
+Goldstone and Higgs hydrodynamics in the BCS-BEC crossover. The resolver fetched it on the
+`arxiv_id` branch, where an identifier is taken as *tying* the record to the reference, so
+the total disagreement that followed was reported as a **`conflict`** — an accusation
+against a correctly-printed citation, sourced entirely from an identifier we made up. It
+landed on Roy's D20 version-pair trap row, which is one of the six the eval scores.
+
+**This is the reason to make it structural rather than a prompt instruction, and it is a
+demo talking point, not only a fix.** The pitch is *"AI hallucinates citations that look
+real; this tool catches them."* An extractor that invents a plausible identifier is that
+exact failure occurring inside the tool that claims to detect it. The ADDENDUM's framing is
+that we report what we can and cannot verify rather than what we suspect — and fabricating
+the evidence forfeits the argument entirely, in the one direction nobody catches by reading
+the output, because an invented identifier *resolves* and therefore looks more verified
+than a reference that honestly printed nothing. A prompt can discourage it; only a
+post-condition can make it impossible. Say this out loud on stage: **we ran our own
+detector against our own extractor, and it found something.**
+
+Rejected: marking the entry `malformed` (costs a row of recall and asserts something
+untrue about a good extraction); dropping the whole reply and retrying (the other five
+fields were correct, and a retry re-rolls a dice we have already read); leaving it to the
+prompt (unfalsifiable, and this failure is silent by construction).
+
+**Consequence**: `extract_references` gains an optional trailing `notes: list[str] | None`
+— the same append-only shape as `resolve(ref, notes=)`. The `ExtractionResult` return type
+is unchanged, so `refs, malformed = extract_references(doc)` still works everywhere.
+Because a caller may discard `notes`, each drop **also** emits a `RuntimeWarning`: this is
+the one event in this pipeline that must never be silent. **P6** passes a list and
+`scripts/run_pipeline.py` prints an "extraction corrections" block above the ledger path.
+**Cache**: entry text is unchanged, so the cache stays warm — verified, not assumed, at
+125 stored replies before and after re-running all three papers.
+
+**Measured effect**: 1 identifier nulled across all 104 references in the three papers —
+this one. `paper1` R24 moves `conflict` → `verified`, matching its label; injected defects
+detected go **4/6 → 5/6**; the clean-control gate still passes. The 74-reference baseline
+is unmoved (`sample` 23/4/0/13, `plos` 17/6/2/9), because neither real paper had an
+invented identifier.
+
+---
+
 ## D-108 — A weak title-search hit is `unresolvable`, not `conflict`; and a line-break hyphen is dropped at the join
 
 **Date** 2026-09-03 (P6 branch) · **Decided by** Ritik, on the P5 report's two findings ·

@@ -370,13 +370,22 @@ def test_fields_are_parsed_off_the_reply():
             "venue": "arXiv preprint",
         }
     )
-    doc = _tiny_doc(TWO_ENTRIES)
+    # Both identifiers are PRINTED in the entry. They have to be: since D-109 the
+    # extractor drops an identifier it cannot point to on the page, so an entry with no
+    # ids printed would test the guard rather than the field parsing.
+    doc = _tiny_doc(
+        "[1] Jimmy Lei Ba, Jamie Ryan Kiros. Layer normalization. arXiv preprint "
+        "arXiv:1607.06450, 2016. doi: 10.1000/XYZ.\n"
+        "[2] B. Writer. Second title. Review, 2020."
+    )
     refs, _ = extractor.extract_references(doc, client=StubClient(default=reply))
     ref = refs[0]
     assert ref.title == "Layer normalization"
     assert ref.authors == ["Jimmy Lei Ba", "Jamie Ryan Kiros"]
     assert ref.year == 2016, "a year given as a string is still a year"
-    # The contract normalises the DOI; the extractor does not invent one.
+    # The contract normalises the DOI; the extractor does not invent one. The reply
+    # prints it as a doi.org URL and the entry prints it bare and upper-cased - D-109
+    # compares provenance, not format, so both survive.
     assert ref.doi == "10.1000/xyz"
     assert ref.arxiv_id == "1607.06450"
 
@@ -693,3 +702,151 @@ def test_is_malformed_is_gone():
     """Deleted rather than deprecated: a predicate that is wrong on real data should not
     stay importable where P5 might reach for it. See D-102."""
     assert not hasattr(extractor, "is_malformed")
+
+
+# ---------------------------------------------------------------------------
+# The invented-identifier guard - D-109
+#
+# Our pitch is that a tool can catch citations that look real and are not. An extractor
+# that invents an identifier is that exact failure inside our own tool, so this is a
+# structural guarantee rather than a prompt instruction.
+# ---------------------------------------------------------------------------
+
+#: paper1 R24, verbatim off the page. There is NO identifier in this text - "arXiv
+#: preprint (2017)" and nothing else - and the extractor returned 1706.05555, which is a
+#: real arXiv paper about BCS-BEC hydrodynamics. It resolved, disagreed with every field
+#: of the reference, and scored our only false `conflict` on the demo paper.
+#: The marker is renumbered [24] -> [1] and only the marker: `split_entries` accepts a
+#: numbered style only when the markers run monotonically from 1, so a two-entry fixture
+#: starting at 24 falls through to the blank-line split and comes back as one entry.
+R24_RAW = (
+    "[1] M. Smieja, B. C. Geiger, Semi-supervised cross-entropy clustering with "
+    "information bottleneck constraint, arXiv preprint (2017)."
+)
+
+R24_REPLY = json.dumps(
+    {
+        "title": "Semi-supervised cross-entropy clustering with information bottleneck constraint",
+        "authors": ["M. Smieja", "B. C. Geiger"],
+        "year": 2017,
+        "doi": None,
+        "arxiv_id": "1706.05555",
+        "venue": "arXiv preprint",
+    }
+)
+
+
+def test_an_identifier_not_in_the_printed_text_is_dropped():
+    """The R24 case, verbatim. The invention must not reach the resolver."""
+    notes: list[str] = []
+    doc = _tiny_doc(R24_RAW + "\n[2] B. Writer. Second title. Review, 2020.")
+    with pytest.warns(RuntimeWarning, match="does not appear in the printed reference"):
+        refs, malformed = extractor.extract_references(
+            doc, client=StubClient(replies={"Semi-supervised": R24_REPLY}), notes=notes
+        )
+
+    ref = refs[0]
+    assert ref.arxiv_id is None, "an identifier we cannot point to on the page is dropped"
+    assert ref.title, "the rest of the extraction is untouched - this is not a bad entry"
+    assert ref.authors == ["M. Smieja", "B. C. Geiger"]
+    assert ref.year == 2017
+    assert ref.raw_text == R24_RAW, "the printed text is preserved either way"
+
+
+def test_a_dropped_identifier_is_recorded_in_notes():
+    notes: list[str] = []
+    doc = _tiny_doc(R24_RAW + "\n[2] B. Writer. Second title. Review, 2020.")
+    with pytest.warns(RuntimeWarning):
+        extractor.extract_references(
+            doc, client=StubClient(replies={"Semi-supervised": R24_REPLY}), notes=notes
+        )
+    assert len(notes) == 1, notes
+    assert "1706.05555" in notes[0]
+    assert "R01" in notes[0]
+    assert "D-109" in notes[0]
+
+
+def test_a_dropped_identifier_is_NOT_malformed():
+    """D-102's indicator means the extraction attempt produced nothing usable.
+
+    An entry whose title, authors and year are perfect and whose id was invented is a
+    good extraction with one bad field. Once the field is gone it resolves by title like
+    any other reference that printed no identifier - marking it malformed would cost it
+    a row of recall and tell a reviewer something untrue.
+    """
+    doc = _tiny_doc(R24_RAW + "\n[2] B. Writer. Second title. Review, 2020.")
+    with pytest.warns(RuntimeWarning):
+        _refs, malformed = extractor.extract_references(
+            doc, client=StubClient(replies={"Semi-supervised": R24_REPLY})
+        )
+    assert malformed == frozenset(), "a nulled identifier is not a failed extraction"
+
+
+def test_notes_are_optional_and_a_dropped_identifier_still_warns():
+    """`notes` may be discarded by a caller, so this event is never only a note."""
+    doc = _tiny_doc(R24_RAW + "\n[2] B. Writer. Second title. Review, 2020.")
+    with pytest.warns(RuntimeWarning, match="1706.05555"):
+        extractor.extract_references(doc, client=StubClient(replies={"Semi-supervised": R24_REPLY}))
+
+
+@pytest.mark.parametrize(
+    ("printed", "returned"),
+    [
+        # The two forms both real papers actually print, off sample.pdf.
+        ("arXiv preprint arXiv:1607.06450, 2016.", "1607.06450"),
+        ("CoRR, abs/1409.0473, 2014.", "1409.0473"),
+        # And the forms a model is liable to hand back for them.
+        ("arXiv preprint arXiv:1607.06450, 2016.", "arXiv:1607.06450"),
+        ("CoRR, abs/1409.0473, 2014.", "abs/1409.0473"),
+        # A version suffix the printed reference omits is the same identifier.
+        ("arXiv preprint arXiv:1706.05555, 2017.", "1706.05555v1"),
+        # pdfplumber renders a real PLOS DOI with a space after the registrant prefix.
+        ("doi: 10. 1016/j.ajpath.2014.11.001 PMID: 25451152", "10.1016/j.ajpath.2014.11.001"),
+        # A doi.org URL against a bare printed DOI, and the reverse.
+        ("doi:10.1038/505483f", "https://doi.org/10.1038/505483F"),
+        ("Available at https://doi.org/10.1038/505483f", "10.1038/505483f"),
+    ],
+)
+def test_a_printed_identifier_survives_untouched(printed, returned):
+    """False positives cost a resolution, so the matcher compares provenance, not format."""
+    assert extractor._identifier_is_printed(returned, f"[1] A. Author. A title. {printed}")
+
+
+def test_both_real_printed_forms_still_extract(sample_doc):
+    """End to end on the real paper: the guard must not eat sample.pdf's identifiers.
+
+    22 of 40 entries carry an arXiv id and the arxiv_id branch resolves them - if this
+    guard were too strict it would silently push them onto the title search, which is
+    the branch D-108 exists because of.
+    """
+    reply_for = lambda ident: json.dumps(  # noqa: E731
+        {"title": "T", "authors": ["A. Author"], "year": 2016,
+         "doi": None, "arxiv_id": ident, "venue": "arXiv"}
+    )
+    entries = extractor.split_entries(sample_doc.references_text)
+    ba = next(e for e in entries if "arXiv:1607.06450" in e)
+    bahdanau = next(e for e in entries if "abs/1409.0473" in e)
+
+    for entry, ident in ((ba, "1607.06450"), (bahdanau, "1409.0473")):
+        ref = extractor._reference_from_reply(reply_for(ident), "R01", entry)
+        assert ref.arxiv_id == ident, f"the guard ate a printed identifier in {entry[:40]!r}"
+
+
+def test_the_guard_rejects_an_identifier_that_merely_looks_similar():
+    """Armed, not vacuously true: a near-miss digit is still an invention."""
+    entry = "[1] A. Author. A title. arXiv preprint arXiv:1607.06450, 2016."
+    assert not extractor._identifier_is_printed("1607.06451", entry)
+    assert not extractor._identifier_is_printed("10.1000/xyz", entry)
+
+
+def test_year_is_deliberately_not_guarded():
+    """Recorded as a decision, not an oversight - D-109.
+
+    A year cannot cause a wrong resolution, which is the harm the guard exists to
+    prevent, and a containment test over it would fire on correct extractions.
+    """
+    reply = json.dumps(
+        {"title": "T", "authors": [], "year": 2016, "doi": None, "arxiv_id": None, "venue": None}
+    )
+    ref = extractor._reference_from_reply(reply, "R01", "[1] A. Author. A title. No year printed.")
+    assert ref.year == 2016
