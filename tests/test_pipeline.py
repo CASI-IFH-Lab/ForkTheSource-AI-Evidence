@@ -72,8 +72,11 @@ class StubClient:
         )
 
 
+# The arXiv id is PRINTED, because since D-109 the extractor drops an identifier that is
+# not in the entry's text - and the stub reply below returns one.
 TWO_ENTRIES = (
-    "[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization. 2016.\n"
+    "[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization. "
+    "arXiv preprint arXiv:1607.06450, 2016.\n"
     "[2] B. Writer. A second title. Review, 2020."
 )
 

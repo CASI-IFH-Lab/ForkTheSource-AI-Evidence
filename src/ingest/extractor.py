@@ -3,7 +3,7 @@
 Public interface (P4, P5, A3 import only these):
 
     split_entries(references_text) -> list[str]      plain code, no model
-    extract_references(doc)        -> ExtractionResult(references, malformed_ref_ids)
+    extract_references(doc, notes=None) -> ExtractionResult(references, malformed_ref_ids)
     extract_claims(doc, refs)      -> list[Claim]    re-exported from src.ingest.claims
 
 ``extract_claims`` is implemented in ``src.ingest.claims`` - plain regex, no model, no
@@ -79,6 +79,7 @@ import os
 import re
 import statistics
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -406,7 +407,114 @@ def _coerce_year(value: Any) -> int | None:
     return None
 
 
-def _reference_from_reply(reply: str, ref_id: str, raw_text: str) -> Reference:
+# ---------------------------------------------------------------------------
+# The invented-identifier guard - D-109
+# ---------------------------------------------------------------------------
+#: Printed prefixes that decorate an identifier without being part of it. Matched
+#: repeatedly and case-insensitively against the whitespace-squashed value, so
+#: "arXiv:1607.06450", "CoRR, abs/1409.0473" and "https://doi.org/10.1038/x" all reduce
+#: to the identifier a provider would accept.
+_ID_PREFIX_RE = re.compile(
+    r"^(?:"
+    r"arxiv:|"
+    r"doi:|"
+    r"https?://(?:dx\.)?doi\.org/|"
+    r"https?://arxiv\.org/(?:abs|pdf)/|"
+    r"corr,?abs/|"
+    r"abs/"
+    r")+",
+    re.IGNORECASE,
+)
+
+#: An arXiv version suffix. The printed reference usually omits it and the model
+#: sometimes supplies it, and that difference is not an invention.
+_ARXIV_VERSION_RE = re.compile(r"v\d+$", re.IGNORECASE)
+
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _squash(text: str | None) -> str:
+    """Casefold and remove ALL whitespace.
+
+    Removing whitespace rather than collapsing it is deliberate: pdfplumber renders a
+    real PLOS DOI as "10. 1016/j.ajpath.2014.11.001", with a space after the registrant
+    prefix. Collapsing to one space still fails to match; removing it matches.
+    """
+    return _WHITESPACE_RE.sub("", text or "").casefold()
+
+
+def _identifier_is_printed(value: str, raw_text: str) -> bool:
+    """Does this identifier actually appear in the entry's printed text?
+
+    Provenance, not format: both sides are squashed to lowercase with no whitespace and
+    the decorating prefixes are stripped, so the comparison is between the digits and
+    punctuation a human could point to on the page.
+    """
+    haystack = _squash(raw_text)
+    needle = _ID_PREFIX_RE.sub("", _squash(value)).strip("./,;:")
+    if not needle:
+        return False
+    if needle in haystack:
+        return True
+    # "1706.05555v1" returned against "arXiv:1706.05555" printed is the same identifier.
+    stripped = _ARXIV_VERSION_RE.sub("", needle)
+    return bool(stripped) and stripped != needle and stripped in haystack
+
+
+def _drop_invented_identifiers(ref: Reference, notes: list[str] | None) -> Reference:
+    """Null any DOI or arXiv id the model returned that is NOT in the printed text.
+
+    **This is the guard that makes the failure our own product exists to catch
+    structurally impossible inside our own tool.** See D-109. Measured, not theoretical:
+    `eval/corpus/paper1.pdf` R24 prints "arXiv preprint (2017)" with no identifier at
+    all, the extractor returned `1706.05555`, and that is a real arXiv paper about
+    BCS-BEC hydrodynamics. The resolver fetched it, the record disagreed with the
+    reference on every field, and the classifier reported a `conflict` - an accusation
+    against a correctly-printed citation, sourced entirely from an identifier we made
+    up. The ADDENDUM's whole framing is that we report what we can and cannot verify
+    rather than what we suspect; fabricating the evidence is the one failure that
+    forfeits the argument.
+
+    Nulled, NOT marked malformed. `malformed` (D-102) means the extraction attempt
+    produced nothing usable, and it drives P5's indicator. An entry whose title, authors
+    and year are perfect and whose DOI was invented is a good extraction with one bad
+    field - and once the field is gone, the reference resolves by title like any other
+    reference that printed no identifier.
+
+    Only `doi` and `arxiv_id`. `year` is deliberately NOT checked: a reference commonly
+    prints its year in a form the model normalises ("2016" from "(2016)." is fine, but
+    "2016" from "16" or from a volume number is not distinguishable here), and a
+    year that fails a containment test is nearly always a correct extraction rather than
+    an invention. It also cannot cause a wrong resolution, which is the harm this guard
+    exists to prevent. Checking it would produce noise and catch nothing.
+    """
+    invented: dict[str, str] = {}
+    for field in ("doi", "arxiv_id"):
+        value = getattr(ref, field)
+        if value and not _identifier_is_printed(value, ref.raw_text):
+            invented[field] = value
+
+    if not invented:
+        return ref
+
+    for field, value in invented.items():
+        message = (
+            f"{ref.ref_id}: the extractor returned {field}={value!r}, which does not "
+            "appear in the printed reference - dropped, because an identifier we cannot "
+            "point to on the page is one we invented (D-109)"
+        )
+        if notes is not None:
+            notes.append(message)
+        # Warned as well as noted: `notes` is optional and a caller may discard it, and
+        # this is the one event in this pipeline that must never be silent.
+        warnings.warn(message, RuntimeWarning, stacklevel=2)
+
+    return ref.model_copy(update={field: None for field in invented})
+
+
+def _reference_from_reply(
+    reply: str, ref_id: str, raw_text: str, notes: list[str] | None = None
+) -> Reference:
     """Build a validated Reference from one model reply. Raises on anything unusable.
 
     ``ref_id`` and ``raw_text`` are ours and are never taken from the model - the model
@@ -425,7 +533,7 @@ def _reference_from_reply(reply: str, ref_id: str, raw_text: str) -> Reference:
     if not isinstance(authors, list) or not all(isinstance(a, str) for a in authors):
         raise ValueError("authors must be an array of strings")
 
-    return Reference(
+    reference = Reference(
         ref_id=ref_id,
         raw_text=raw_text,
         title=data.get("title") or None,
@@ -435,6 +543,9 @@ def _reference_from_reply(reply: str, ref_id: str, raw_text: str) -> Reference:
         arxiv_id=data.get("arxiv_id") or None,
         venue=data.get("venue") or None,
     )
+    # AFTER validation, before return: an identifier the model supplied that is not in
+    # the printed text is dropped. D-109.
+    return _drop_invented_identifiers(reference, notes)
 
 
 def _malformed_reference(ref_id: str, raw_text: str) -> Reference:
@@ -473,6 +584,7 @@ def extract_references(
     doc: ParsedDocument,
     config: dict[str, Any] | None = None,
     client: Any = None,
+    notes: list[str] | None = None,
 ) -> ExtractionResult:
     """Split the references block, then extract each entry with one AIR call.
 
@@ -483,6 +595,12 @@ def extract_references(
     ``client`` is injectable so the offline tests never touch the network. Passing one
     is the only way to run this without a key; left as None it builds the shared
     gateway client from the environment.
+
+    ``notes`` is optional and append-only - the same shape as ``resolve(ref, notes=)``.
+    Pass a list to collect what the extraction had to correct (today: identifiers the
+    model returned that are not in the printed text, D-109), or leave it out and they are
+    discarded. The return type is unchanged, so ``refs, malformed = extract_references(doc)``
+    still works everywhere it did.
     """
     entries = split_entries(doc.references_text)
     if not entries:
@@ -509,7 +627,7 @@ def extract_references(
         cached = cache.get(key)
         if isinstance(cached, str):
             try:
-                reference = _reference_from_reply(cached, ref_id, entry)
+                reference = _reference_from_reply(cached, ref_id, entry, notes)
             except Exception:  # noqa: BLE001 - a stale cached reply is just a miss
                 reference = None
 
@@ -522,7 +640,7 @@ def extract_references(
             for attempt in range(max_retries + 1):
                 try:
                     reply = _call_model(client, entry, model, temperature, timeout)
-                    reference = _reference_from_reply(reply, ref_id, entry)
+                    reference = _reference_from_reply(reply, ref_id, entry, notes)
                     cache[key] = reply
                     _save_cache(cache)
                     break

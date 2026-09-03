@@ -77,6 +77,7 @@ __all__ = [
     "STAGE_KEYS",
     "PipelineIntegrityError",
     "default_judge",
+    "last_run_notes",
     "ledger_path_for",
     "run",
 ]
@@ -186,6 +187,24 @@ def _check_counts(ledger: Ledger) -> None:
         )
 
 
+def _report_extraction_notes(notes: list[str], progress: ProgressFn | None) -> None:
+    """Stash what the extraction corrected where the CLI and A3 can both read it.
+
+    `run() -> Ledger` is the frozen §7 signature, so this does not become a second
+    return value. `last_run_notes` is deliberately module-level and deliberately
+    documented as last-run-only: it is a diagnostic channel for the process that just
+    called `run`, not state anybody should build on.
+    """
+    last_run_notes.clear()
+    last_run_notes.extend(notes)
+
+
+#: What the most recent `run()` in this process had to correct during extraction. Read
+#: by `scripts/run_pipeline.py` so a dropped identifier (D-109) is visible on stage.
+#: Overwritten by every run; not thread-safe, and not meant to be.
+last_run_notes: list[str] = []
+
+
 def run(
     pdf_path: PdfSource,
     judge_fn: JudgeFn | None = None,
@@ -223,7 +242,13 @@ def run(
 
     # --- extract (AIR) ----------------------------------------------------
     _emit(progress, "extract", extract_model)
-    references, malformed_ref_ids = extract_references(document, config=config, client=client)
+    # extraction_notes collects what the extraction had to CORRECT - today, identifiers
+    # the model returned that are not in the printed text (D-109). A discarded list
+    # would make the guard invisible, and the guard is the thing we say out loud.
+    extraction_notes: list[str] = []
+    references, malformed_ref_ids = extract_references(
+        document, config=config, client=client, notes=extraction_notes
+    )
     # Fills Reference.cited_by_claims in place, which is where the priority formula's
     # citation count comes from.
     claims: list[Claim] = extract_claims(document, references)
@@ -276,6 +301,7 @@ def run(
     # --- ledger -----------------------------------------------------------
     _emit(progress, "ledger", None)
     ledger = Ledger(document_name=document.name, claims=claims, entries=entries)
+    _report_extraction_notes(extraction_notes, progress)
     _check_counts(ledger)  # before the write, always
     save_ledger(ledger, ledger_path_for(document.name, output_dir))
     return ledger
