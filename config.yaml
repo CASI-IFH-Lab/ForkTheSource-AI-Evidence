@@ -1,14 +1,46 @@
+# ForkTheSource settings. Read ONLY by src/settings.py - nothing else opens this file.
+# Credentials do NOT live here; they live in .env (see .env.example).
+# There are no defaults in code: a missing key raises. See docs/config_reference.md.
+
 models:
-  extractor:        qwen3-30b-a3b-instruct-2507
-  judge:            qwen3-235b-a22b-thinking-2507
-  repro_extractor:  qwen3-30b-a3b-instruct-2507
-  repro_judge:      qwen3-235b-a22b-thinking-2507
-  critic:           gemma4-31b-it
+  extractor:        qwen3-30b-a3b-instruct-2507      # P2, reference extraction
+  judge:            qwen3-235b-a22b-thinking-2507    # A1, the LLM judge
+
 temperature: 0.1
-critic_temperature: 0.0
+
+# P3 cache + P4 resolvers
 resolvers:
   cache_dir: cache/
-  timeout_seconds: 10
+  cache_ttl_hours: 72
+  timeout_seconds: 10                                # HTTP timeout, not the LLM one
+  providers: [crossref, openalex, arxiv]             # P4 waterfall order
+  mailto: your-asurite@asu.edu                       # Crossref polite pool - put YOUR ASU address here
+
+# Every LLM call, any stage
+llm:
+  timeout_seconds: 60
+  max_retries: 1
+
+cache:
+  schema_version: 1                                  # bump to invalidate cached payloads
+
+# P5 rule-based classifier signal cutoffs. From the plan - do not retune casually.
+thresholds:
+  title_strong: 0.92
+  title_weak: 0.70
+  author_strong: 0.60
+  year_tolerance: 1
+
+# P6 / A1 priority formula: severity x claim-weight x confidence, +0.3 if retracted, cap 1.0.
+# These are STATUS severities. The plan has no per-indicator severity.
+priority:
+  severity:
+    conflict: 1.0
+    needs_check: 0.6
+    unresolvable: 0.5
+    verified: 0.0
+
+# The accusation guard. Scanned by A1's gate.py against every rationale and check.
 banned_terms: [fake, fabricated, invented, nonexistent, fraud, plagiarism,
                irreproducible, "not reproducible", sloppy, "AI-generated",
                "AI-written"]

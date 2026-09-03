@@ -47,13 +47,14 @@ def model_for(stage: str, config: dict[str, Any] | None = None) -> str:
 def temperature_for(stage: str, config: dict[str, Any] | None = None) -> float:
     """Return the temperature for a stage.
 
-    The critic gets its own setting so it can be pinned lower than everything else.
+    Every LLM call in the plan runs at the same temperature - 0.1, for determinism, which
+    is what makes Roy's evaluation meaningful. The `stage` argument is kept so that a
+    per-stage override could be added to config.yaml later without touching any caller.
     """
     settings = _resolve(config)
-    key = "critic_temperature" if stage == "critic" else "temperature"
-    if key not in settings:
-        raise KeyError(f"'{key}' is missing from config.yaml.")
-    return float(settings[key])
+    if "temperature" not in settings:
+        raise KeyError("'temperature' is missing from config.yaml.")
+    return float(settings["temperature"])
 
 
 def banned_terms(config: dict[str, Any] | None = None) -> list[str]:
@@ -77,3 +78,52 @@ def cache_dir(config: dict[str, Any] | None = None) -> Path:
     path = PROJECT_ROOT / str(resolver_settings(config)["cache_dir"])
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def llm_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Request timeout and retry count for every LLM call.
+
+    Distinct from resolvers.timeout_seconds, which is the HTTP timeout for catalogue
+    lookups. A reasoning model on a long bibliography needs far longer than a REST call.
+    """
+    settings = _resolve(config).get("llm")
+    if not isinstance(settings, dict):
+        raise KeyError("'llm' is missing from config.yaml, or is not a mapping.")
+    return settings
+
+
+def thresholds(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Signal cutoffs for P5's rule-based classifier.
+
+    title_strong, title_weak, author_strong, year_tolerance. These are the numbers the
+    deterministic baseline is built on, and the baseline is what the LLM judge has to beat
+    in the metrics table - so changing them changes what "better" means.
+    """
+    settings = _resolve(config).get("thresholds")
+    if not isinstance(settings, dict):
+        raise KeyError("'thresholds' is missing from config.yaml, or is not a mapping.")
+    return settings
+
+
+def priority_severity(config: dict[str, Any] | None = None) -> dict[str, float]:
+    """Per-STATUS severity weights for the priority formula.
+
+    One entry per contract status. There is deliberately no per-indicator severity: the
+    plan does not define one, and inventing indicator weights would invent classifier
+    behaviour that nothing has agreed to.
+    """
+    priority = _resolve(config).get("priority")
+    if not isinstance(priority, dict):
+        raise KeyError("'priority' is missing from config.yaml, or is not a mapping.")
+    severity = priority.get("severity")
+    if not isinstance(severity, dict):
+        raise KeyError("'priority.severity' is missing from config.yaml, or is not a mapping.")
+    return {str(status): float(weight) for status, weight in severity.items()}
+
+
+def cache_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Cache-wide settings. schema_version is bumped to invalidate stored payloads."""
+    settings = _resolve(config).get("cache")
+    if not isinstance(settings, dict):
+        raise KeyError("'cache' is missing from config.yaml, or is not a mapping.")
+    return settings
