@@ -1,7 +1,7 @@
 """One shared client for the OpenAI-compatible gateway.
 
 Credentials come from the environment (see .env.example) and never from code.
-Model names come from config.yaml via src.config - never from here, and never
+Model names come from config.yaml via src.settings - never from here, and never
 from a caller's hardcoded string.
 
 Nothing calls this yet: M0 is the skeleton and makes no model requests.

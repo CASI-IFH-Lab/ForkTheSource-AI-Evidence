@@ -1,8 +1,8 @@
-"""Stage 1 - intake. Reads tests/data/sample.pdf and checks what comes out."""
+"""P1 - PDF intake. Reads tests/data/sample.pdf and checks what comes out."""
 
 from pathlib import Path
 
-from src.pipeline import intake
+from src.ingest import pdf_parser as intake
 
 SAMPLE = Path(__file__).parent / "data" / "sample.pdf"
 

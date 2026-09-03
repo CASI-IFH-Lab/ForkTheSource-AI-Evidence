@@ -1,7 +1,19 @@
-"""Stage 1 - Intake. Plain code, no model calls.
+"""P1 - PDF intake and normalization. Owner: Ritik. Plain code, no LLM, no network.
 
-Opens the PDF, pulls the text out page by page, and (from M1) works out which of
-those pages hold the bibliography.
+HALF DONE. What is here works: per-page pdfplumber extraction, with a page that has no
+extractable text coming back as "" rather than being dropped, so a page's index is always
+its page number minus one.
+
+What P1 still owes, per its plan card:
+  - parse_pdf(path) -> ParsedDocument is the PUBLIC INTERFACE other modules may import.
+    It does not exist yet. The functions below are its internals.
+    ParsedDocument: {name, pages, tables, body_text, references_text, ref_start_page}
+  - the body/references split (locate_bibliography below is a stub), plus the fallback of
+    treating the last 15% of pages as the reference region when no heading is found
+  - per-page tables as {page, rows}
+  - a try/except around each page: one corrupt page must never kill a run
+
+Do not build those here as a drive-by. They are P1 and they get their own branch.
 """
 
 from __future__ import annotations

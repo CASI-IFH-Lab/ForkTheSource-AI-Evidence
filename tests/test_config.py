@@ -2,7 +2,7 @@
 
 import pytest
 
-from src import config
+from src import settings as config
 
 LLM_STAGES = ("extractor", "judge", "repro_extractor", "repro_judge", "critic")
 

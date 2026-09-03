@@ -4,15 +4,15 @@ Start it with:
 
     streamlit run app.py
 
-M0 does one thing: you drop a PDF in and it shows you the raw text it pulled out.
-The later stages (see src/pipeline) are stubbed and are not called yet.
+B0 does one thing: you drop a PDF in and it shows you the raw text it pulled out.
+This is the skeleton shell. The real UI is dashboard/app.py (A2, Arsha's).
 """
 
 from __future__ import annotations
 
 import streamlit as st
 
-from src.pipeline import intake
+from src.ingest import pdf_parser
 
 st.set_page_config(page_title="ForkTheSource", page_icon="🍴", layout="wide")
 
@@ -21,7 +21,7 @@ st.set_page_config(page_title="ForkTheSource", page_icon="🍴", layout="wide")
 # The cache key is the file's bytes: same PDF, no second read.
 @st.cache_data(show_spinner="Reading the PDF...")
 def read_pdf(pdf_bytes: bytes) -> dict:
-    return intake.run(pdf_bytes)
+    return pdf_parser.run(pdf_bytes)
 
 
 st.title("ForkTheSource")
@@ -67,6 +67,6 @@ with st.expander("Page by page"):
 
 st.divider()
 st.caption(
-    "Next up: stage 1 finds the bibliography, stage 2 turns each reference into JSON. "
-    "See src/pipeline for where that code goes."
+    "Next up: P1 finishes the body/references split, then P2 turns each reference "
+    "into contract Reference objects. See docs/architecture_map.md."
 )
