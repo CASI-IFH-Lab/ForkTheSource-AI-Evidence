@@ -43,6 +43,19 @@ Every PR, regardless of module:
 - [ ] Every model reply validated against a schema; on failure, retry once, then keep `raw_text` and set the `malformed` indicator - never drop an entry.
 - [ ] `pytest` passes, and the count went up if this PR adds behaviour.
 
+## Decisions recorded
+
+<!--
+  Tick one. A PR that establishes a rule and does not log it is INCOMPLETE.
+  "Constrains someone else" means: another person's module has to be written a
+  particular way because of this PR, or this PR departs from the Module
+  Implementation Plan. If neither is true, N/A is the right answer.
+  See docs/decisions.md - the standing rule is at the top.
+-->
+
+- [ ] Decisions recorded (`docs/decisions.md` D-0NN): <!-- list the D-numbers this PR adds or implements -->
+- [ ] N/A — this PR establishes no rule that constrains anyone else's module.
+
 ## How I tested
 
 <!--

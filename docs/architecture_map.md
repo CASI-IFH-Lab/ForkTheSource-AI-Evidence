@@ -8,6 +8,11 @@ three people can build at once.
 
 Ground truth: [module_implementation_plan.pdf](module_implementation_plan.pdf), Sections 3-6.
 
+> **Any constraint here that you might want to argue with cites a D-number** —
+> see [decisions.md](decisions.md), whose *Open at Sync 1* section is the short list of what
+> is still unresolved. The realignment this file describes is **D-002**; the three-tier
+> ownership rule that governs the import arrows is **D-008** (open).
+
 ## The flow
 
 Seven steps, but not seven interchangeable stages — each has its own signature, its own
@@ -108,6 +113,7 @@ independently. Neither seam exists yet, because neither file exists yet — this
 target, recorded so both are built the same way.
 
 **1. The orchestrator takes `judge_fn`** — P6, `src/pipeline.py`:
+<!-- The priority formula does NOT live here: it is src/priority.py, shared infra, shipping with B1 - D-009 (open). -->
 
 ```python
 run(pdf_path, judge_fn=None, progress=None) -> Ledger
@@ -185,7 +191,9 @@ checks, not a model call:
 Any failure re-judges that entry once, then forces `needs_check` with the rationale
 `"judge output failed quality gate"` — a visible, honest failure rather than a silent one.
 Because it is pure code, `models.critic` and `critic_temperature` were removed from
-`config.yaml`: they were keys nothing could ever read.
+`config.yaml`: they were keys nothing could ever read. **That removal is D-004, and its
+status is open** — if Arsha concludes `gate.py` wants a model of its own, the keys come back
+and a test changes with them.
 
 The same accusation guard appears at three layers, which is deliberate: A1's prompt hard
 rules, `gate.py`'s scan, and R3's adversarial suite plus R2's release-blocking
@@ -201,7 +209,7 @@ zero-accusation check on the clean control.
 | `src/matching/__init__.py` | Package marker, P5. Empty otherwise. |
 | `src/settings.py` | **Real.** The B2 loader, 11 readers, no defaults. |
 | `src/llm.py` | **Real.** Gateway client from env. No caller yet. |
-| `app.py` | **Real.** B0 shell: drop zone → raw text. Superseded by `dashboard/app.py` at A2. |
+| `app.py` | **Real.** B0 shell: drop zone → raw text. Superseded by `dashboard/app.py` at A2, and **deleted in the A3 PR — D-010**. |
 | `src/pipeline.py` | **Deliberately absent.** Reserved for P6; a test asserts it. |
 | `src/contract.py` | **Deliberately absent.** B1, Arsha's; a test asserts it. |
 | `src/judge/`, `dashboard/` | **Deliberately absent.** Arsha creates them on her branch. |

@@ -382,17 +382,23 @@ already encoded above; this section records *why*, so a future reader does not r
 them. Where a ruling matched the original recommendation, that is noted and nothing more is
 said about it.
 
+> **Every ruling here cites its D-number, and the full reasoning — including the rejected
+> alternative — is in [`docs/decisions.md`](../../docs/decisions.md).** If you want to argue
+> with one of these, read its entry first; if you still disagree, that is what Sync 1 is for.
+> **One ruling is still open: D-020**, which constrains P5 step 2 and is listed in that
+> file's *Open at Sync 1* section.
+
 | # | Question | Ruling | Note |
 |---|----------|--------|------|
-| 1 | Wrong year: which status, which indicator? | **`needs_check` + `[]`** | Differs from the first draft, which had `[version_mismatch]`. Carries a constraint on P5 — see `docs/defect_catalog.md`, *A promise the corpus makes to P5 step 2*. |
-| 2 | Malformed: `unresolvable` or `needs_check`? | **`unresolvable` + `[malformed]`** for the corpus | The plan does **not** contradict itself. P5's line governs *status from evidence*; A1's line governs *confidence direction*. "Never toward conflict" forbids escalation — it does not mandate `needs_check`. Both real-world variants documented in the catalog; R1 injects the severe one. |
-| 3 | Version pair: `verified` or `needs_check`? | **`verified` + `[version_mismatch]`** | As recommended. A worklist is only valuable if everything on it deserves a human's time. |
-| 4 | Do the version-pair traps count inside the 21? | **Yes** | Resolved by redefining recall as label agreement rather than defect detection — see *Recall, precisely*. A trap is detected when the pipeline gets it right, which for a trap means not flagging `conflict`. |
-| 5 | Mangled author list: which status, which indicator? | **`needs_check` + `[]`** | As recommended, including the DOI-less injection constraint. |
-| 6 | Duplicate entry: `verified` or `needs_check`, one row or two? | **`needs_check` + `[duplicate_entry]` on both rows** | As recommended. Divergent metadata means at least one copy is wrong and nothing in the evidence says which, so a human has to pick. `verified` would assert the bibliography is fine when it demonstrably is not. |
-| 7 | Orphan: which status? | **`verified` + `[orphan]`** | As recommended. `orphan` is derived from the **claim map**, not from resolution, so it can co-occur with any status; the corpus injects it on a reference that otherwise resolves clean, which is what makes the label unambiguous. |
-| 8 | Hallucinated reference | **`unresolvable` + `[]`** | As recommended. Output-identical to a legitimately unresolvable reference, so each spiked paper must retain at least one genuine `unresolvable` with `injected: false` — otherwise precision on `unresolvable` is unmeasurable. Now checklist item 13. |
-| 9 | What is a false accusation? | **`conflict` on `injected: false`, plus any banned-term hit** | As recommended, with the banned-term clause added. `needs_check` on a clean reference is a false *alarm*: separate, non-blocking. See *False accusation vs false alarm*. |
+| 1 | Wrong year: which status, which indicator? | **`needs_check` + `[]`** | **D-011.** Differs from the first draft, which had `[version_mismatch]`. Carries a constraint on P5 — see **D-020** and `docs/defect_catalog.md`, *A promise the corpus makes to P5 step 2*. |
+| 2 | Malformed: `unresolvable` or `needs_check`? | **`unresolvable` + `[malformed]`** for the corpus | **D-012.** The plan does **not** contradict itself. P5's line governs *status from evidence*; A1's line governs *confidence direction*. "Never toward conflict" forbids escalation — it does not mandate `needs_check`. Both real-world variants documented in the catalog; R1 injects the severe one. |
+| 3 | Version pair: `verified` or `needs_check`? | **`verified` + `[version_mismatch]`** | **D-013.** As recommended. A worklist is only valuable if everything on it deserves a human's time. |
+| 4 | Do the version-pair traps count inside the 21? | **Yes** | **D-014.** Resolved by redefining recall as label agreement rather than defect detection — see *Recall, precisely*. A trap is detected when the pipeline gets it right, which for a trap means not flagging `conflict`. |
+| 5 | Mangled author list: which status, which indicator? | **`needs_check` + `[]`** | **D-015.** As recommended, including the DOI-less injection constraint. |
+| 6 | Duplicate entry: `verified` or `needs_check`, one row or two? | **`needs_check` + `[duplicate_entry]` on both rows** | **D-016.** As recommended. Divergent metadata means at least one copy is wrong and nothing in the evidence says which, so a human has to pick. `verified` would assert the bibliography is fine when it demonstrably is not. |
+| 7 | Orphan: which status? | **`verified` + `[orphan]`** | **D-017.** As recommended. `orphan` is derived from the **claim map**, not from resolution, so it can co-occur with any status; the corpus injects it on a reference that otherwise resolves clean, which is what makes the label unambiguous. |
+| 8 | Hallucinated reference | **`unresolvable` + `[]`** | **D-018.** As recommended. Output-identical to a legitimately unresolvable reference, so each spiked paper must retain at least one genuine `unresolvable` with `injected: false` — otherwise precision on `unresolvable` is unmeasurable. Now checklist item 13. |
+| 9 | What is a false accusation? | **`conflict` on `injected: false`, plus any banned-term hit** | **D-019.** As recommended, with the banned-term clause added. `needs_check` on a clean reference is a false *alarm*: separate, non-blocking. See *False accusation vs false alarm*. |
 
 Two smaller questions from the first pass, also settled:
 
