@@ -19,6 +19,10 @@ and shows them in a table.
 | [docs/config_reference.md](docs/config_reference.md) | Every key in `config.yaml`, what reads it, what breaks without it. |
 | [docs/architecture_map.md](docs/architecture_map.md) | The real flow, the three lanes, the merge queue, and the two injection seams. |
 | [docs/module_implementation_plan.pdf](docs/module_implementation_plan.pdf) | **Ground truth.** The full plan. When a doc and the plan disagree, the plan wins. |
+| [docs/decisions.md](docs/decisions.md) | **Before you argue with a rule.** Every decision that constrains someone else's module, with stable D-numbers. The "Open at Sync 1" section at the top is the agenda. |
+| [docs/worklog.md](docs/worklog.md) | What actually happened, session by session — including what went wrong and what it cost. |
+| [docs/defect_catalog.md](docs/defect_catalog.md) | The 21 injected defects, their `defect_id`s, and the expected outcome of each. Roy's, for R1. |
+| [eval/golden/FORMAT.md](eval/golden/FORMAT.md) | The golden-label file specification, the recall definition, and the release gate R2 implements. |
 | [docs/descoped.md](docs/descoped.md) | What was cut and why, so nobody re-derives it. |
 
 ## Setup

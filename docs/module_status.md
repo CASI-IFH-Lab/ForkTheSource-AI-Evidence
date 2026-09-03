@@ -1,10 +1,15 @@
 # Module status — where the repo actually is
 
 Ground truth: [module_implementation_plan.pdf](module_implementation_plan.pdf), now in the
-repo. Verified against commit `c83f17f` on `ritik/m0-skeleton`. `main` is at `ffd0180`.
+repo. Verified against commit `04b8ffe` on `main`, with **B0, B2 and B3 merged**.
 
 The plan says what should be built; this file says what *is* built. Where they differ, the
 **Actual** column is the one read off the working tree.
+
+> **Any constraint in this file that you might want to argue with cites a D-number.** The
+> reasoning is in [decisions.md](decisions.md), and the four still-open decisions are listed
+> in its *Open at Sync 1* section. What actually happened, and what it cost, is in
+> [worklog.md](worklog.md).
 
 ## The table
 
@@ -12,28 +17,28 @@ Owners and plan status are from the plan. Actual status is from the tree.
 
 | ID | Module | Owner | Queue # | **Actual status in this repo** | Where |
 |----|--------|-------|---------|-------------------------------|-------|
-| B0 | App skeleton | Ritik | 1 | **Done.** App starts, drop zone accepts a PDF, raw text renders. | `ritik/m0-skeleton` |
-| B1 | `src/contract.py` + fixtures | **Arsha** | 2 | **Not started. Critical path.** Does not exist and must not be created by anyone else. `tests/test_layout.py` asserts its absence as a live reminder. | — |
-| B2 | `config.yaml` + `src/settings.py` | Ritik | 3 | **Done — landed inside B0**, and extended. See below. | `ritik/m0-skeleton` |
-| B3 | Golden-label format + defect catalog | **Roy** | 4 | **Not started.** Docs and data only — zero code dependency, startable this minute. | — |
+| B0 | App skeleton | Ritik | 1 | **DONE — ON `main`.** Merged in PR #1 at `a579dab`. App starts, drop zone accepts a PDF, raw text renders. Self-merged without review — **D-021**. | `main` |
+| B1 | `src/contract.py` + fixtures | **Arsha** | 2 | **Not started. Critical path.** Does not exist and must not be created by anyone else. `tests/test_layout.py` asserts its absence as a live reminder — **D-006**. Also carries `src/priority.py` — **D-009**. | — |
+| B2 | `config.yaml` + `src/settings.py` | Ritik | 3 | **DONE — ON `main`**, landed inside B0 and extended. See below. Critic keys dropped — **D-004**. | `main` |
+| B3 | Golden-label format + defect catalog | **Roy** | 4 | **DONE — ON `main`.** Merged in PR #2 at `04b8ffe`. Written by Ritik in Roy's absence; **Roy owns it from here.** Nine rulings — **D-011**-**D-019**; one open constraint on P5 — **D-020**. | `main` |
 | P1 | PDF intake & normalization | Ritik | 5 | **HALF DONE.** See the P1 section. | `src/ingest/pdf_parser.py` |
 | P2 | Reference extractor (LLM) | Ritik | 8 | **Not started. Blocked on B1.** | → `src/ingest/extractor.py`, `claims.py`, `prompts.py` |
 | P3 | Resolver cache layer (SQLite) | Ritik | 10 | **Not started.** Config keys now exist (`cache_ttl_hours`, `schema_version`). | → `src/resolvers/cache.py` |
-| P4 | Scholarly resolvers | Ritik | 12 | **Not started.** Config keys now exist (`providers`, `mailto`, `timeout_seconds`). **Sync 1 gate.** | → `src/resolvers/{crossref,openalex,arxiv,resolver}.py` |
+| P4 | Scholarly resolvers | Ritik | 12 | **Not started.** Config keys now exist (`providers`, `mailto`, `timeout_seconds`). **`mailto` must move to `.env` as `CROSSREF_MAILTO` and P4 must refuse to start without it — D-007, decided and NOT yet implemented.** **Sync 1 gate.** | → `src/resolvers/{crossref,openalex,arxiv,resolver}.py` |
 | P5 | Evidence builder + rule classifier | Ritik | 13 | **Not started.** All four thresholds now in config. | → `src/matching/{evidence,rules}.py` |
 | P6 | Pipeline orchestrator | Ritik | 14 | **Not started.** `src/pipeline.py` deliberately does not exist — reserved, and asserted absent by a test. | → `src/pipeline.py`, `scripts/run_pipeline.py` |
-| A1 | LLM judge agent (incl. the folded-in critic as `gate.py`) | **Arsha** | 6 | **Not started.** Unblocked by B1 + fixtures — no pipeline imports needed. | → `src/judge/{prompts,agent,gate,priority}.py` |
+| A1 | LLM judge agent (incl. the folded-in critic as `gate.py`) | **Arsha** | 6 | **Not started.** Unblocked by B1 + fixtures — no pipeline imports needed. `gate.py` is three code checks, not a model call — **D-004**. `tests/test_layout.py` needs amending first — **D-008**. | → `src/judge/{prompts,agent,gate,priority}.py` |
 | A2 | Interactive dashboard | **Arsha** | 9 | **Not started.** Runs on `ledger_fixture.json` alone, fully offline. | → `dashboard/{app,theme}.py` |
-| A3 | Integration (`judge_fn` wiring) | **Arsha** (Ritik reviews) | 15 | **Not started.** Needs P6 + A1 + A2 all on main. | → `src/judge/wiring.py`, `dashboard/app.py` |
-| R1 | Spiked corpus + golden labels | **Roy** | 7 | **Not started.** Needs B3's format only. Data-only. | → `eval/corpus/`, `eval/golden/`, `docs/defect_catalog.md` |
-| R2 | Eval harness | **Roy** | 11 (fixtures) / 16 (full) | **Not started.** `eval/` is an empty directory, so git does not track it — R2's first commit creates it. | → `eval/run_eval.py`, `eval/report.py` |
+| A3 | Integration (`judge_fn` wiring) | **Arsha** (Ritik reviews) | 15 | **Not started.** Needs P6 + A1 + A2 all on main. **Deletes `app.py`** — **D-010**. | → `src/judge/wiring.py`, `dashboard/app.py` |
+| R1 | Spiked corpus + golden labels | **Roy** | 7 | **UNBLOCKED NOW** — B3 is on `main` and R1's only dependency is its format. Data-only. `eval/corpus/originals/` stays **tracked**. | → `eval/corpus/`, `eval/golden/`, `docs/defect_catalog.md` |
+| R2 | Eval harness | **Roy** | 11 (fixtures) / 16 (full) | **Not started.** `eval/` is now tracked (B3 put `eval/golden/` in it). Recall is over `defect_id`s — **D-014**, **D-016**; the release gate is **D-019**. | → `eval/run_eval.py`, `eval/report.py` |
 | R3 | Adversarial + honesty suite | **Roy** | 16 | **Not started.** Needs A1 on main to attack the real judge. | → `eval/adversarial.txt`, `eval/run_adversarial.py` |
 | R4 | Docs, metrics slide, demo | **Roy** (Arsha reviews) | 17 | **Seeded.** [setup.md](setup.md) is written to R4's own acceptance bar: fresh clone + README → running app in under 10 minutes. | `README.md`, → `docs/architecture.md`, `deck/` |
 
 ## B2 landed inside B0 — do not open a second PR
 
-Merge-queue item **#3 (B2, config)** is already satisfied by the B0 branch. The B0 PR
-closes **#1 and #3 together**. Nobody needs to branch B2, and a B2 PR opened against this
+Merge-queue item **#3 (B2, config)** was satisfied by the B0 branch. PR #1 closed
+**#1 and #3 together** and is merged. Nobody needs to branch B2, and a B2 PR opened against this
 tree will conflict with files that already exist.
 
 The files that prove it:
@@ -90,8 +95,7 @@ Whoever picks up P1 is finishing a file, not starting one.
 
 | When | Ritik | Arsha | Roy |
 |------|-------|-------|-----|
-| **Right now**, before any merge | Nothing new — B0 is in review. | **B1** (`src/contract.py` + fixtures). Zero dependency on B0. This is the critical path and the whole team is waiting on the names you pick. | **B3** (golden-label format + defect catalog). Zero code dependency on anything. |
-| **On B0 merge** (#1, this PR) | **P1** — finish `src/ingest/pdf_parser.py`. | Environment works; A1 still wants B1 first. | Can run the app; still no code dependency. |
+| **Right now** — B0, B2 and B3 are **on `main`** | **P1** — finish `src/ingest/pdf_parser.py`. Environment works. | **B1** (`src/contract.py` + fixtures + `src/priority.py`, **D-009**). Zero dependency on anything merged. This is the critical path and the whole team is waiting on the names you pick. | **R1** (spiked corpus + golden labels). B3's format is on `main`, so this is unblocked. Read `docs/defect_catalog.md` § *Handoff notes for Roy* first. |
 | **On B1 merge** (#2) | **P2** unblocks — the extractor needs `Reference` to emit. | **A1** unblocks (judge agent, on fixtures + stub fallback). Then **A2** on `ledger_fixture.json`. | **R1** unblocks once B3 is in — golden labels need the contract's enum values. |
 | **Then, in lane order** | P3 → P4 (Sync 1 gate) → P5 → P6 | A1 → A2 → wait for P6 | R1 → R2 fixture mode → R3 |
 | **A3, queue #15** | Review only. | **A3 — the first and only time two lanes share a file.** | R2 full mode + R3 against the live judge. |
@@ -112,11 +116,20 @@ deleting it is part of B1's diff.
 
 ## File ownership — the disjointness *is* the parallel-work guarantee
 
-| Owner | Files |
-|-------|-------|
-| **Ritik** | `src/ingest/`, `src/resolvers/`, `src/matching/`, `src/pipeline.py`, `src/settings.py`, `src/llm.py`, `config.yaml`, `app.py`, `scripts/` |
-| **Arsha** | `src/contract.py`, `src/judge/`, `dashboard/` |
-| **Roy** | `eval/`, and `docs/` beyond the five B0 docs |
+> **This table has THREE tiers, not two — see D-008.** Shared infrastructure
+> (`src/settings.py`, `src/llm.py`, `src/contract.py`, `src/priority.py`) is imported by
+> anyone and redefined by nobody: the lane rule read literally would force a second gateway
+> client inside `src/judge/`, which is the opposite of what it is for. **D-008 is open** —
+> `tests/test_layout.py` must be amended before A1 lands, because as written it will flag
+> Arsha's own intra-package imports as lane violations.
+
+| Tier | Owner | Files |
+|------|-------|-------|
+| **Shared infra** | nobody exclusively | `src/settings.py`, `src/llm.py`, `src/contract.py`, `src/priority.py` |
+| **Lane-exclusive** | **Ritik** | `src/ingest/`, `src/resolvers/`, `src/matching/`, `src/pipeline.py`, `config.yaml`, `app.py`, `scripts/` |
+| **Lane-exclusive** | **Arsha** | `src/judge/`, `dashboard/` |
+| **Lane-exclusive** | **Roy** | `eval/`, `docs/defect_catalog.md`, and `docs/` beyond the B0 docs |
+| **Integration** | **Arsha** (Ritik reviews) | A3 only — the one moment two lanes share a file |
 
 This table is not bureaucracy. Section 1 of the plan defines a module as *"one branch, one
 owner, one PR, one public interface, and zero imports from another person's unmerged
