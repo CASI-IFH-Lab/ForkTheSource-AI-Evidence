@@ -1,0 +1,533 @@
+{
+  "claims": [
+    {
+      "claim_id": "C01",
+      "page": 2,
+      "ref_ids": [
+        "R01"
+      ],
+      "text": "The Transformer architecture relies solely on attention mechanisms, dispensing with recurrence and convolutions entirely."
+    },
+    {
+      "claim_id": "C02",
+      "page": 3,
+      "ref_ids": [
+        "R02"
+      ],
+      "text": "Bidirectional pretraining on masked tokens outperformed prior left-to-right language model pretraining on downstream tasks."
+    },
+    {
+      "claim_id": "C03",
+      "page": 4,
+      "ref_ids": [
+        "R02"
+      ],
+      "text": "Fine-tuning the pretrained encoder added only a lightweight output layer for each downstream task."
+    },
+    {
+      "claim_id": "C04",
+      "page": 5,
+      "ref_ids": [
+        "R03"
+      ],
+      "text": "Residual connections allowed training of substantially deeper convolutional networks without a degradation in accuracy."
+    },
+    {
+      "claim_id": "C05",
+      "page": 6,
+      "ref_ids": [
+        "R04"
+      ],
+      "text": "A multinational registry analysis reported an association between the treatment and increased in-hospital mortality."
+    },
+    {
+      "claim_id": "C06",
+      "page": 7,
+      "ref_ids": [
+        "R05"
+      ],
+      "text": "A lightweight cross-attention module reduced streaming latency relative to full-attention baselines."
+    },
+    {
+      "claim_id": "C07",
+      "page": 7,
+      "ref_ids": [
+        "R06"
+      ],
+      "text": "The same result was reported in the immediately preceding citation."
+    },
+    {
+      "claim_id": "C08",
+      "page": 8,
+      "ref_ids": [
+        "R08"
+      ],
+      "text": "The masked-language-model objective was later adopted by several follow-up encoder architectures."
+    }
+  ],
+  "contract_version": "v0",
+  "document_name": "fixture-paper.pdf",
+  "entries": [
+    {
+      "evidence": {
+        "author_overlap": 1.0,
+        "doi_match": null,
+        "indicators": [],
+        "notes": [
+          "Matched via arXiv identifier 1706.03762."
+        ],
+        "ref_id": "R01",
+        "resolved": {
+          "arxiv_id": null,
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer",
+            "Niki Parmar",
+            "Jakob Uszkoreit"
+          ],
+          "doi": null,
+          "is_preprint": null,
+          "is_retracted": false,
+          "provider": "arxiv",
+          "raw": {
+            "arxiv_id": "1706.03762"
+          },
+          "title": "Attention Is All You Need",
+          "url": "https://arxiv.org/abs/1706.03762",
+          "venue": "NeurIPS 2017",
+          "year": 2017
+        },
+        "title_similarity": 1.0,
+        "year_delta": 0
+      },
+      "priority": 0.0,
+      "reference": {
+        "arxiv_id": "1706.03762",
+        "authors": [
+          "Ashish Vaswani",
+          "Noam Shazeer",
+          "Niki Parmar",
+          "Jakob Uszkoreit"
+        ],
+        "cited_by_claims": [
+          "C01"
+        ],
+        "doi": null,
+        "raw_text": "Vaswani, A. et al. \"Attention Is All You Need.\" NeurIPS, 2017.",
+        "ref_id": "R01",
+        "title": "Attention Is All You Need",
+        "venue": "NeurIPS",
+        "year": 2017
+      },
+      "verdict": {
+        "checks": [],
+        "confidence": 0.98,
+        "judge_model": "stub-judge-v0",
+        "rationale": "Reference resolves cleanly to the arXiv record with matching title, authors, and year.",
+        "ref_id": "R01",
+        "status": "verified"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 1.0,
+        "doi_match": null,
+        "indicators": [
+          "version_mismatch"
+        ],
+        "notes": [
+          "Citation points at the arXiv preprint; the resolver returned the peer-reviewed NAACL 2019 version of the same work."
+        ],
+        "ref_id": "R02",
+        "resolved": {
+          "arxiv_id": null,
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang",
+            "Kenton Lee",
+            "Kristina Toutanova"
+          ],
+          "doi": "10.18653/v1/n19-1423",
+          "is_preprint": false,
+          "is_retracted": false,
+          "provider": "acl-anthology",
+          "raw": {
+            "anthology_id": "N19-1423"
+          },
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "url": "https://aclanthology.org/N19-1423/",
+          "venue": "NAACL-HLT 2019",
+          "year": 2019
+        },
+        "title_similarity": 1.0,
+        "year_delta": 1
+      },
+      "priority": 0.0,
+      "reference": {
+        "arxiv_id": "1810.04805",
+        "authors": [
+          "Jacob Devlin",
+          "Ming-Wei Chang",
+          "Kenton Lee",
+          "Kristina Toutanova"
+        ],
+        "cited_by_claims": [
+          "C02",
+          "C03"
+        ],
+        "doi": null,
+        "raw_text": "Devlin, J. et al. \"BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.\" arXiv:1810.04805, 2018.",
+        "ref_id": "R02",
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+        "venue": "arXiv preprint",
+        "year": 2018
+      },
+      "verdict": {
+        "checks": [
+          "Confirm the preprint and published version share the same author list and abstract."
+        ],
+        "confidence": 0.9,
+        "judge_model": "stub-judge-v0",
+        "rationale": "Same paper at a different publication stage: title and author identity are exact and the published version supersedes the preprint.",
+        "ref_id": "R02",
+        "status": "verified"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 1.0,
+        "doi_match": false,
+        "indicators": [
+          "doi_mismatch"
+        ],
+        "notes": [
+          "Title, authors and year identify this work unambiguously, but the printed DOI is not the DOI of that work."
+        ],
+        "ref_id": "R03",
+        "resolved": {
+          "arxiv_id": null,
+          "authors": [
+            "Kaiming He",
+            "Xiangyu Zhang",
+            "Shaoqing Ren",
+            "Jian Sun"
+          ],
+          "doi": "10.1109/cvpr.2016.90",
+          "is_preprint": null,
+          "is_retracted": false,
+          "provider": "crossref",
+          "raw": {
+            "note": "record matched on title/author, not on the printed DOI"
+          },
+          "title": "Deep Residual Learning for Image Recognition",
+          "url": "https://doi.org/10.1109/cvpr.2016.90",
+          "venue": "CVPR 2016",
+          "year": 2016
+        },
+        "title_similarity": 1.0,
+        "year_delta": 0
+      },
+      "priority": 0.51,
+      "reference": {
+        "arxiv_id": "1512.03385",
+        "authors": [
+          "Kaiming He",
+          "Xiangyu Zhang",
+          "Shaoqing Ren",
+          "Jian Sun"
+        ],
+        "cited_by_claims": [
+          "C04"
+        ],
+        "doi": "10.1109/cvpr.2016.90",
+        "raw_text": "He, K. et al. \"Deep Residual Learning for Image Recognition.\" CVPR, 2016. doi:10.1109/CVPR.2016.90",
+        "ref_id": "R03",
+        "title": "Deep Residual Learning for Image Recognition",
+        "venue": "CVPR",
+        "year": 2016
+      },
+      "verdict": {
+        "checks": [
+          "Verify the DOI against the publisher's page for the cited title.",
+          "Check whether the printed DOI was mistyped or copied from an adjacent reference."
+        ],
+        "confidence": 0.85,
+        "judge_model": "stub-judge-v0",
+        "rationale": "The work itself is identified confidently by title and authors, but the printed DOI belongs to a different record, so the two identifiers in this citation disagree.",
+        "ref_id": "R03",
+        "status": "conflict"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 1.0,
+        "doi_match": true,
+        "indicators": [
+          "retracted"
+        ],
+        "notes": [
+          "The publisher record for this DOI carries a retraction notice."
+        ],
+        "ref_id": "R04",
+        "resolved": {
+          "arxiv_id": null,
+          "authors": [
+            "Mandeep R. Mehra",
+            "Sapan S. Desai",
+            "Frank Ruschitzka",
+            "Amit N. Patel"
+          ],
+          "doi": "10.1016/s0140-6736(20)31180-6",
+          "is_preprint": null,
+          "is_retracted": true,
+          "provider": "crossref",
+          "raw": {
+            "retraction_notice": true
+          },
+          "title": "Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis",
+          "url": "https://doi.org/10.1016/s0140-6736(20)31180-6",
+          "venue": "The Lancet",
+          "year": 2020
+        },
+        "title_similarity": 1.0,
+        "year_delta": 0
+      },
+      "priority": 0.87,
+      "reference": {
+        "arxiv_id": null,
+        "authors": [
+          "Mandeep R. Mehra",
+          "Sapan S. Desai",
+          "Frank Ruschitzka",
+          "Amit N. Patel"
+        ],
+        "cited_by_claims": [
+          "C05"
+        ],
+        "doi": "10.1016/s0140-6736(20)31180-6",
+        "raw_text": "Mehra, M.R. et al. \"Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis.\" The Lancet, 2020.",
+        "ref_id": "R04",
+        "title": "Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis",
+        "venue": "The Lancet",
+        "year": 2020
+      },
+      "verdict": {
+        "checks": [
+          "Confirm whether the citing text depends on findings specific to the retracted analysis."
+        ],
+        "confidence": 0.95,
+        "judge_model": "stub-judge-v0",
+        "rationale": "The reference resolves correctly, but the publisher record shows the article was retracted, so claims drawn from it should not be relied upon as cited.",
+        "ref_id": "R04",
+        "status": "conflict"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 0.0,
+        "doi_match": null,
+        "indicators": [],
+        "notes": [
+          "No matching record was found in any configured resolver."
+        ],
+        "ref_id": "R05",
+        "resolved": null,
+        "title_similarity": 0.0,
+        "year_delta": null
+      },
+      "priority": 0.12,
+      "reference": {
+        "arxiv_id": null,
+        "authors": [
+          "T. Okoye",
+          "S. Lindqvist"
+        ],
+        "cited_by_claims": [
+          "C06"
+        ],
+        "doi": null,
+        "raw_text": "Okoye, T. and Lindqvist, S. \"A Lightweight Cross-Attention Module for Streaming ASR.\" Workshop on Efficient NLP, 2021.",
+        "ref_id": "R05",
+        "title": "A Lightweight Cross-Attention Module for Streaming ASR",
+        "venue": "Workshop on Efficient NLP",
+        "year": 2021
+      },
+      "verdict": {
+        "checks": [
+          "Search additional indexes not covered by the automated resolvers."
+        ],
+        "confidence": 0.4,
+        "judge_model": "stub-judge-v0",
+        "rationale": "No resolver returned a matching record for this citation; it may be from an unindexed venue.",
+        "ref_id": "R05",
+        "status": "unresolvable"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 0.0,
+        "doi_match": null,
+        "indicators": [
+          "malformed"
+        ],
+        "notes": [
+          "Citation text could not be parsed into a structured reference."
+        ],
+        "ref_id": "R06",
+        "resolved": null,
+        "title_similarity": 0.0,
+        "year_delta": null
+      },
+      "priority": 0.09,
+      "reference": {
+        "arxiv_id": null,
+        "authors": [],
+        "cited_by_claims": [
+          "C07"
+        ],
+        "doi": null,
+        "raw_text": "Ibid., p. 42.",
+        "ref_id": "R06",
+        "title": null,
+        "venue": null,
+        "year": null
+      },
+      "verdict": {
+        "checks": [
+          "Trace the preceding full citation this entry refers back to."
+        ],
+        "confidence": 0.3,
+        "judge_model": "stub-judge-v0",
+        "rationale": "The citation text is a back-reference notation rather than a standalone bibliographic entry and cannot be resolved on its own.",
+        "ref_id": "R06",
+        "status": "unresolvable"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 1.0,
+        "doi_match": null,
+        "indicators": [
+          "orphan"
+        ],
+        "notes": [
+          "Reference resolves cleanly but is not cited by any claim in the document."
+        ],
+        "ref_id": "R07",
+        "resolved": {
+          "arxiv_id": null,
+          "authors": [
+            "Ian J. Goodfellow",
+            "Jean Pouget-Abadie",
+            "Mehdi Mirza",
+            "Bing Xu"
+          ],
+          "doi": null,
+          "is_preprint": null,
+          "is_retracted": false,
+          "provider": "arxiv",
+          "raw": {
+            "arxiv_id": "1406.2661"
+          },
+          "title": "Generative Adversarial Networks",
+          "url": "https://arxiv.org/abs/1406.2661",
+          "venue": "NeurIPS 2014",
+          "year": 2014
+        },
+        "title_similarity": 1.0,
+        "year_delta": 0
+      },
+      "priority": 0.0,
+      "reference": {
+        "arxiv_id": "1406.2661",
+        "authors": [
+          "Ian J. Goodfellow",
+          "Jean Pouget-Abadie",
+          "Mehdi Mirza",
+          "Bing Xu"
+        ],
+        "cited_by_claims": [],
+        "doi": null,
+        "raw_text": "Goodfellow, I. et al. \"Generative Adversarial Networks.\" NeurIPS, 2014.",
+        "ref_id": "R07",
+        "title": "Generative Adversarial Networks",
+        "venue": "NeurIPS",
+        "year": 2014
+      },
+      "verdict": {
+        "checks": [
+          "Search the document text for an uncaptured citation to this reference."
+        ],
+        "confidence": 0.9,
+        "judge_model": "stub-judge-v0",
+        "rationale": "The citation is sound - title, authors and year all match the resolved record. The note is only that no claim in the document points at it.",
+        "ref_id": "R07",
+        "status": "verified"
+      }
+    },
+    {
+      "evidence": {
+        "author_overlap": 1.0,
+        "doi_match": true,
+        "indicators": [
+          "duplicate_entry"
+        ],
+        "notes": [
+          "This DOI already appears against a separate reference-list entry (R02) with different printed venue metadata."
+        ],
+        "ref_id": "R08",
+        "resolved": {
+          "arxiv_id": null,
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang",
+            "Kenton Lee",
+            "Kristina Toutanova"
+          ],
+          "doi": "10.18653/v1/n19-1423",
+          "is_preprint": null,
+          "is_retracted": false,
+          "provider": "acl-anthology",
+          "raw": {
+            "anthology_id": "N19-1423"
+          },
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "url": "https://aclanthology.org/N19-1423/",
+          "venue": "NAACL-HLT 2019",
+          "year": 2019
+        },
+        "title_similarity": 1.0,
+        "year_delta": 0
+      },
+      "priority": 0.288,
+      "reference": {
+        "arxiv_id": null,
+        "authors": [
+          "Jacob Devlin",
+          "Ming-Wei Chang",
+          "Kenton Lee",
+          "Kristina Toutanova"
+        ],
+        "cited_by_claims": [
+          "C08"
+        ],
+        "doi": "10.18653/v1/n19-1423",
+        "raw_text": "Devlin, J. et al. \"BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.\" EMNLP, 2019. doi:10.18653/V1/N19-1423",
+        "ref_id": "R08",
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+        "venue": "EMNLP",
+        "year": 2019
+      },
+      "verdict": {
+        "checks": [
+          "Determine whether this is a duplicate reference-list entry or two distinct citations wrongly sharing a DOI."
+        ],
+        "confidence": 0.8,
+        "judge_model": "stub-judge-v0",
+        "rationale": "Two reference-list entries resolve to the same DOI with inconsistent printed venue metadata. At least one of the two is wrong and the evidence does not say which, so a human should decide.",
+        "ref_id": "R08",
+        "status": "needs_check"
+      }
+    }
+  ]
+}

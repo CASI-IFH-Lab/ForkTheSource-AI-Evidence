@@ -4,3 +4,4 @@ openai
 python-dotenv
 pyyaml
 requests
+pydantic>=2.6,<3
