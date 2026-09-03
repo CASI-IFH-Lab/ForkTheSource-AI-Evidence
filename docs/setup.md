@@ -35,8 +35,11 @@ interpreter:
 python --version
 ```
 
-Expected: `Python 3.13.7`, or any 3.11+. The code uses `X | Y` type syntax and builtin
-generics, so **3.10 or older will not run it.**
+Expected: `Python 3.13.7`. Only 3.13.7 has been verified end to end; **3.10 is the
+floor**, because `src/pipeline/intake.py` evaluates a `str | Path | bytes | IO[bytes]`
+union at runtime (PEP 604) and that syntax does not exist before 3.10. If you are on 3.9
+or older, the very first import fails with a `TypeError`. If you are on 3.10-3.12 it
+should work, but you are the first to try it — say so if anything breaks.
 
 ## Step 3 — get your own API key
 
