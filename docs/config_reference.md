@@ -5,12 +5,13 @@ division of labour:
 
 - **`config.yaml`** — settings. Tracked in git, identical for every teammate, safe to
   read in a PR. Model names, temperature, thresholds, timeouts, banned terms.
-- **`.env`** — credentials. Never tracked, different for every teammate, never printed.
-  Two names only: `AIR_API_KEY` and `AIR_BASE_URL`. Template in `.env.example`.
+- **`.env`** — credentials **and anything per-person**. Never tracked, different for every
+  teammate, never printed. Three names: `AIR_API_KEY`, `AIR_BASE_URL` and
+  `CROSSREF_MAILTO`. Template in `.env.example`.
 
 If you are about to add a tunable number to a module, it belongs in `config.yaml`. If you
-are about to add a second credential, it belongs in `.env` **and** in `.env.example` as a
-name with a placeholder value.
+are about to add a second credential — **or any value that differs per teammate** — it
+belongs in `.env` **and** in `.env.example` as a name with a placeholder value.
 
 `src/settings.py` is the only module in the repo that opens `config.yaml`. Nothing else
 should, ever — a second reader is a second place for the defaults to drift.
@@ -29,7 +30,6 @@ marked; they are not choices and should not be retuned without a PR that says wh
 | `resolvers.cache_ttl_hours` | int (hours) | `72` *(plan, P3)* | `resolver_settings()` | **Absent:** `KeyError` when P3 lands. **Wrong:** too long and a paper retracted *after* we cached it stays cached as fine — the `retracted` indicator silently failing, which is the worst failure this project has. Too short and the offline demo loses its cache. |
 | `resolvers.timeout_seconds` | int (seconds) | `10` *(plan, P4)* | `resolver_settings()` | **Absent:** `KeyError`. **Wrong:** too low and slow catalogues become spurious `unresolvable` statuses; too high and one dead endpoint stalls a document. This is the **HTTP** timeout — see `llm.timeout_seconds`. |
 | `resolvers.providers` | list of strings | `[crossref, openalex, arxiv]` *(plan, P4)* | `resolver_settings()` | **Absent:** `KeyError` when P4 lands. **Wrong order:** the waterfall is DOI→Crossref, else arXiv-ID→arXiv, else title→Crossref then OpenAlex. Dropping `openalex` specifically breaks the `retracted` indicator — OpenAlex is where the Retraction Watch flag comes from. |
-| `resolvers.mailto` | string (email) | `your-asurite@asu.edu` — **placeholder** | `resolver_settings()` | **Absent:** `KeyError`. **Left as the placeholder:** Crossref drops you out of the polite pool, so you get slower and more rate-limited responses rather than an error. Each teammate puts their own ASU address here. |
 | `llm.timeout_seconds` | int (seconds) | `60` | `llm_settings()` | **Absent:** `KeyError` on the first LLM call. **Wrong:** this exists *because* reusing `resolvers.timeout_seconds: 10` would time out every judge call — a reasoning model on a long bibliography needs far more than a REST lookup. Setting them equal reintroduces exactly that bug. |
 | `llm.max_retries` | int | `1` *(plan: "retry once")* | `llm_settings()` | **Absent:** `KeyError`. **Wrong:** the rule is retry once, then degrade — `malformed` for extraction, `fallback_fn` for the judge. Raising it hides a broken prompt behind latency; setting it to 0 turns one transient blip into a degraded verdict. |
 | `cache.schema_version` | int | `1` | `cache_settings()` | **Absent:** `KeyError`. **Wrong:** the point of this key is that changing a stored payload's shape means bumping it so old rows are treated as misses. Forgetting to bump it after a shape change means silently reading stale data in the new code's shape. |
@@ -137,6 +137,20 @@ touching `src/settings.py`.
 timeout = settings.resolver_settings()["timeout_seconds"]      # -> 10
 ```
 
+### `crossref_mailto() -> str`
+
+**The one reader that does not read `config.yaml`.** It reads `CROSSREF_MAILTO` from the
+environment, and it takes no `config` argument because there is no config key to pass.
+Unset, or set to whitespace, **raises `RuntimeError`** naming the variable and pointing at
+`.env.example` — the same pattern as `src/llm.py`'s two credential checks.
+
+```python
+mailto = settings.crossref_mailto()      # -> your own address, or RuntimeError
+```
+
+**P4 must call this before its first request and let it raise.** See D-007 and the section
+below.
+
 ### `cache_dir(config: dict | None = None) -> Path`
 
 An absolute `Path` to the resolver cache, relative to the repo root, **created if it does
@@ -199,7 +213,7 @@ plan rather than from guesswork:
 | P4 LLM timeout | `llm.timeout_seconds: 60` | separated from the HTTP timeout |
 | P4 retry count | `llm.max_retries: 1` | "retry once" in P2/A1 |
 | P4 provider list | `resolvers.providers` | P4 waterfall order |
-| P4 Crossref polite pool | `resolvers.mailto` | P4 step 1 |
+| P4 Crossref polite pool | **`CROSSREF_MAILTO` in `.env`** — *not* a `config.yaml` key. See D-007 and *Why the polite-pool address is a credential* below. | P4 step 1 |
 | P5 thresholds | `thresholds.*` — four keys | P5 step 3, verbatim |
 | Cache invalidation | `cache.schema_version: 1` | — |
 | Priority weights | `priority.severity` — four statuses | P6 formula |
@@ -209,6 +223,34 @@ confidence cutoff per status. **That shape was wrong and was discarded.** P5's c
 is a rule mapping over *signal* thresholds (title similarity, author overlap, year delta,
 DOI match), not a confidence band per status. Shipping the proposed shape would have
 quietly built a different classifier than the one R2 measures.
+
+### Why the polite-pool address is a credential, not a setting — D-007
+
+`resolvers.mailto` was a `config.yaml` key with the placeholder `your-asurite@asu.edu`. It
+is now `CROSSREF_MAILTO` in `.env`, for two reasons that are worth separating.
+
+**It is per-person, so a tracked file is the wrong home.** It is the only value in
+`config.yaml` that differs for each of the three of us, and a tracked per-person value has
+exactly two outcomes: everyone commits their own address over each other's, or the
+placeholder ships. `.env` is already the mechanism for per-person values and is already
+gitignored.
+
+**And a real mailbox in a tracked file is the same category of mistake as a pasted key.**
+Not the same severity — nobody can spend your inbox — but the same *shape*: a real personal
+identifier, committed to a repo under an org name that looks public, discoverable by anyone
+who clones it and permanent in the history once pushed. The B0 pass already had one
+near-miss of exactly this shape with the first 16 characters of a live key (see
+`docs/worklog.md`), and the lesson generalised: the control has to be mechanical. Putting
+the address behind `.env` means `.gitignore` enforces the rule instead of a comment asking
+each teammate to remember it.
+
+**The failure it prevents is silent, which is why the reader raises.** Without a contact
+address, Crossref does not error — it drops you out of the polite pool and answers more
+slowly with tighter rate limits. P4 then looks like it has a performance problem rather
+than a configuration problem. A placeholder that still works is worse than a missing value
+that stops the module, because it produces a plausible wrong state nobody investigates.
+Hence `crossref_mailto()` raises rather than returning `""`, and hence P4 calls it before
+its first request.
 
 ### Still genuinely open
 

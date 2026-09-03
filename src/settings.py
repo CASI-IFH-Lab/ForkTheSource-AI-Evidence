@@ -1,17 +1,25 @@
-"""Reads config.yaml.
+"""Reads config.yaml, plus the one setting that is per-person rather than per-project.
 
 This is the ONLY place in the code that opens config.yaml, and the only way any
 stage learns which model to call or which temperature to use. Nothing here has a
 default value for a model name - if a key is missing you get a loud error instead
 of a silent fallback, which is what we want when a run has to be reproducible.
+
+crossref_mailto() is the exception to "config.yaml is the source": it reads the
+environment, because the Crossref polite-pool address differs for each of us and a
+per-person value in a tracked file is either overwritten by whoever commits last or
+shipped as a placeholder. See docs/decisions.md D-007. The no-defaults rule applies
+there too - unset raises, it does not return an empty string.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = PROJECT_ROOT / "config.yaml"
@@ -71,6 +79,30 @@ def resolver_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
     if not isinstance(settings, dict):
         raise KeyError("'resolvers' is missing from config.yaml, or is not a mapping.")
     return settings
+
+
+def crossref_mailto() -> str:
+    """The Crossref polite-pool contact address, from CROSSREF_MAILTO in .env.
+
+    NOT a config.yaml key - D-007. P4 must call this before its first request and let it
+    raise, because the failure it prevents is silent: without a contact address Crossref
+    demotes you out of the polite pool and answers more slowly with tighter rate limits,
+    and nothing errors. A placeholder that still works is worse than a missing value that
+    stops the module, because it produces a plausible wrong state nobody investigates.
+
+    Raises rather than returning "" so a caller cannot pass emptiness through to the
+    User-Agent header and get the demotion anyway.
+    """
+    load_dotenv()
+    mailto = os.getenv("CROSSREF_MAILTO")
+    if not mailto or not mailto.strip():
+        raise RuntimeError(
+            "CROSSREF_MAILTO is not set. Copy .env.example to .env and put YOUR OWN ASU "
+            "address in it.\nWithout it Crossref silently drops you out of the polite "
+            "pool - slower answers and tighter rate limits, with no error. See "
+            "docs/decisions.md D-007."
+        )
+    return mailto.strip()
 
 
 def cache_dir(config: dict[str, Any] | None = None) -> Path:

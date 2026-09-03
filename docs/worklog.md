@@ -399,16 +399,92 @@ All three are now **on `main`**. Corrected in this PR.
 
 ---
 
-## Standing facts, as of the end of session 4
+## Session 5 — unblocking B1 and A1
+
+**2026-09-03. Branch `ritik/cleanup-b1-unblock`, off `main` at `278fccd`.**
+
+Small and urgent: two things on `main` would have turned Arsha's suite red for reasons she
+did not cause, and one decision was still unimplemented. No features.
+
+### The D-006 investigation, which found no contradiction
+
+The brief reported `docs/decisions.md` D-006 and `docs/module_status.md` as contradicting
+each other about whether the contract-absence test existed. **Neither was wrong.**
+`test_contract_does_not_exist_yet` was live at `tests/test_layout.py:46` — verified by
+`pytest --collect-only`, 11 tests including it — and module_status was right to say so.
+D-006 was describing the **red** variant that was removed before the B0 PR, and was easy to
+misread as describing the green absence-assertion that shipped.
+
+The underlying concern was real regardless, which is why the test was removed anyway:
+Arsha's first B1 commit is `src/contract.py`, and the moment she makes it the suite goes red
+for doing the right thing, with *deleting an assertion* as the documented fix. D-006 is
+rewritten to say what is true of the tree and to record the second removal.
+
+### The intra-package false positive, verified by simulation
+
+`tests/test_layout.py` walked every file under `src/` and forbade any import of
+`src.judge.*`, so `src/judge/agent.py` importing `src/judge/prompts.py` would have been
+flagged as a lane violation on Arsha's first A1 commit.
+
+Rewritten around D-008's three tiers as module-level constants (`SHARED_INFRA`, `LANES`).
+**Verified by simulation before merge** rather than by reading the logic:
+
+| Simulation | Result |
+|---|---|
+| `src/judge/{__init__,prompts,agent}.py` + `dashboard/{app,theme}.py`, importing intra-package **and** `src.llm`, `src.settings`, `src.contract` | **17 passed** — the bug is fixed |
+| `dashboard/app.py` importing `src.pipeline` | **caught** — new direction, A2's DoD box |
+| `src/matching/rules.py` importing `src.judge.agent` | **caught** — original direction still holds |
+
+The simulated files were removed afterwards; `git status` clean.
+
+### D-007 implemented
+
+`resolvers.mailto` out of `config.yaml`, `CROSSREF_MAILTO` into `.env.example`,
+`settings.crossref_mailto()` raising on unset or whitespace, three new config tests, and
+five docs updated.
+
+**One near-miss of its own, worth recording because it is the second of this exact shape.**
+While writing the `config_reference.md` section explaining that a real mailbox in a tracked
+file is the same category of mistake as a pasted key, the worked example for
+`crossref_mailto()` was written as `# -> "ragarw68@asu.edu"` — a **real address, in a
+tracked file, in the paragraph warning against exactly that**. Caught and replaced with
+`# -> your own address` before the commit; `grep -rn "ragarw68"` over the tree returns
+nothing. Same mechanism as session 2's key near-miss: *writing documentation*, reaching for
+a real value because a realistic example is more useful than a fake one. Two for two. The
+control is mechanical or it is nothing — and note that `check_secrets.sh` would **not** have
+caught this one, since an email is not key-shaped and is not the gateway host.
+
+### Test count: 39 → 48
+
+| File | Was | Now | Change |
+|------|-----|-----|--------|
+| `tests/test_layout.py` | 11 | **17** | −1 contract absence (D-006); −1 one-directional lane check, +8 tier-aware checks (D-008) |
+| `tests/test_config.py` | 12 | **15** | +3 for D-007: `mailto` absent, reader raises unset/whitespace, reader strips when set |
+| `tests/test_app.py` | 3 | 3 | — |
+| `tests/test_intake.py` | 6 | 6 | — |
+| `tests/test_no_secrets.py` | 7 | 7 | — |
+| **Total** | **39** | **48** | **+9** |
+
+### D-022 to D-031 logged
+
+Ten decisions found by the previous session's sweep, established in B3 and the B2 config
+pass and never logged. Four other documented choices were deliberately **not** logged —
+the reasoning is at the foot of `docs/decisions.md`.
+
+---
+
+## Standing facts, as of the end of session 5
 
 | | |
 |---|---|
 | Repo path | `/Users/ritik/Documents/Projects/CASI Hackathon/ForkTheSource-AI-Evidence` |
 | Old Dropbox path | Empty but for a `.DS_Store`. Verified. |
-| `main` | `04b8ffe` before PR #3 |
-| Tests on `main` | 39 passed |
+| `main` | `278fccd` before the B1-unblock PR |
+| Tests on `main` | 48 passed (39 before this session) |
 | `check_secrets.sh` on `main` | PASS |
-| On `main` | B0, B2, B3 |
+| On `main` | B0, B2, B3, plus the B1-unblock cleanup |
 | Not started | B1 (critical path, Arsha), P1-P6, A1-A3, R1-R4 |
-| Open decisions | D-004, D-008, D-009, D-020 |
-| Implementation debt | D-007 |
+| Open decisions | **D-004, D-009, D-020** — three |
+| Closed this session | D-006, D-007, D-008 |
+| Implementation debt | none |
+| Env names | `AIR_API_KEY`, `AIR_BASE_URL`, `CROSSREF_MAILTO` — Arsha and Roy must add the third to their own `.env` |

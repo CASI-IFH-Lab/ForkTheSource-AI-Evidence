@@ -65,7 +65,40 @@ def test_resolver_settings_are_loaded():
     assert config["timeout_seconds"] == 10
     assert config["cache_ttl_hours"] == 72
     assert config["providers"] == ["crossref", "openalex", "arxiv"]
-    assert "@" in config["mailto"]
+
+
+def test_mailto_is_not_a_config_key():
+    """D-007. The polite-pool address is per-person, so it lives in .env, not here.
+
+    Asserted rather than merely absent, for the same reason as the critic keys: a
+    per-person value in a tracked file is either overwritten by whoever commits last or
+    shipped as the placeholder. Re-adding it should arrive with a failing test.
+    """
+    assert "mailto" not in settings.resolver_settings()
+    assert "mailto" not in settings.load_config()
+
+
+def test_crossref_mailto_raises_when_unset(monkeypatch):
+    """No-defaults rule, applied to the environment.
+
+    Returning "" would let P4 build a User-Agent with no contact address and get demoted
+    out of the polite pool silently - slower and rate-limited with no error. That is the
+    failure D-007 exists to make loud.
+    """
+    monkeypatch.setattr(settings, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.delenv("CROSSREF_MAILTO", raising=False)
+    with pytest.raises(RuntimeError, match="CROSSREF_MAILTO"):
+        settings.crossref_mailto()
+
+    monkeypatch.setenv("CROSSREF_MAILTO", "   ")
+    with pytest.raises(RuntimeError, match="CROSSREF_MAILTO"):
+        settings.crossref_mailto()
+
+
+def test_crossref_mailto_reads_the_environment(monkeypatch):
+    monkeypatch.setattr(settings, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.setenv("CROSSREF_MAILTO", "  someone@asu.edu  ")
+    assert settings.crossref_mailto() == "someone@asu.edu"
 
 
 def test_llm_settings_are_separate_from_http_settings():

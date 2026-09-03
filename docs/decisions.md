@@ -24,24 +24,39 @@ from a PR body, a card, a commit message or another doc.
 
 ## Open at Sync 1
 
-The whole agenda, and nothing else. Four entries are unresolved; everything else in this
-file is settled and only needs reading.
+The whole agenda, and nothing else. **Three entries.** Everything else in this file is
+settled and only needs reading.
 
 | ID | One line | Whose call | Why it cannot wait |
 |----|----------|-----------|--------------------|
 | **D-004** | Does `gate.py` want a model of its own? `models.critic` and `critic_temperature` were **removed** from `config.yaml`. | **Arsha** | If A1 wants an LLM in the gate, two config keys and a `config_reference.md` row come back — and the removal is currently pinned by a test. |
-| **D-008** | `tests/test_layout.py` must be amended before A1 lands. As written it will fail on Arsha's own intra-package imports. | **Arsha + Ritik** | It breaks the first time `src/judge/agent.py` imports `src/judge/prompts.py`. She will hit it on her first commit, not at review. |
-| **D-009** | The priority formula lives in `src/priority.py` as shared infra and ships with **B1**. | **Arsha** (it ships in her PR) | B1 is the critical path and this adds a file to it. Deciding it after B1 merges means a second PR touching the contract. |
+| **D-009** | The priority formula lives in `src/priority.py` as shared infra and ships with **B1**. | **Arsha** (it ships in her PR) | B1 is the critical path and this adds a file to it. Deciding it after B1 merges means a second PR touching the contract. Carries the three un-named formula constants with it. |
 | **D-020** | `version_mismatch` fires when **exactly one record is a preprint** — not on venue divergence, not on year alone. | **Ritik** (it constrains P5) | P5 is unwritten. Implemented any other way, three correctly-classified defects score as misses and recall fails the ≥ 19/21 target. |
 
-**Implementation debt, not an open question:** **D-007** (`resolvers.mailto` → `.env` as
-`CROSSREF_MAILTO`) is decided and **not yet implemented** — `config.yaml:17` still carries
-the key. It needs one PR, not a discussion. See the entry.
+**Closed since this table was first written**, all three in the B1-unblock PR:
+
+- **D-006** — the contract-absence assertion is removed. B1's diff touches no test in
+  `tests/test_layout.py`, so Arsha's first commit leaves the suite green.
+- **D-007** — `CROSSREF_MAILTO` is implemented: out of `config.yaml`, into `.env`, with a
+  reader that raises on unset. No longer implementation debt.
+- **D-008** — `tests/test_layout.py` now encodes the three tiers as constants, permits
+  intra-package and shared-infra imports, and enforces cross-lane isolation in **both**
+  directions.
 
 ## Index
 
 | ID | Title |
 |----|-------|
+| D-031 | `check_secrets.sh` reads the gateway host out of `.env.example` |
+| D-030 | `llm.timeout_seconds` is deliberately separate from `resolvers.timeout_seconds` |
+| D-029 | The confidence-band `thresholds` shape was rejected |
+| D-028 | Document-level defects are excluded from the golden labels and reassigned to P1 |
+| D-027 | R2 must assert worklist correctness from the labels that already exist |
+| D-026 | `ref_id` is an opaque string, and a labels/ledger mismatch is a HARD ERROR |
+| D-025 | `document` matches `Ledger.document_name`, not the PDF filename |
+| D-024 | Indicator matching is exact-set, not subset |
+| D-023 | One defect, one expected status — and an ambiguous defect gets SPLIT |
+| D-022 | The B3 label schema extends the plan's example with three more fields |
 | D-021 | B0 self-merged without Arsha's review |
 | D-020 | `version_mismatch` fires on preprint-ness, not venue divergence |
 | D-019 | False accusation defined, and separated from false alarm |
@@ -57,12 +72,411 @@ the key. It needs one PR, not a discussion. See the entry.
 | D-009 | The priority formula lives in `src/priority.py`, shared infra, shipping with B1 |
 | D-008 | Three tiers of file ownership, and the lane rule's exception for shared infra |
 | D-007 | `resolvers.mailto` moves to `.env` as `CROSSREF_MAILTO` |
-| D-006 | The red contract test was written and then removed |
+| D-006 | No test asserts the contract's absence, in either direction |
 | D-005 | The repro stages are out of scope by omission, not by the Section 9 cut line |
 | D-004 | `models.critic` and `critic_temperature` removed from `config.yaml` |
 | D-003 | `src/config.py` renamed `src/settings.py` — and the plan beats the brief |
 | D-002 | `src/pipeline/` split into `src/ingest/`, `src/resolvers/`, `src/matching/` |
 | D-001 | The B0 docs were written against an inferred module mapping |
+
+---
+
+> ### D-022 to D-031 were logged retroactively
+>
+> These ten decisions were **established earlier** — most of them inside B3, two in the B2
+> config pass — and were **logged in the B1-unblock pass** after a sweep of the tree found
+> them unrecorded. Each carries both dates. They are ordered by ID like everything else in
+> this file; the ID order is the order they were assigned, not the order they were made.
+>
+> Every one of them constrains a module nobody has written yet, which is why they are here
+> rather than left as prose in the file that established them. That is the standing rule
+> working late rather than not at all.
+
+---
+
+## D-031 — `check_secrets.sh` reads the gateway host out of `.env.example`
+
+**Established** 2026-09-03 (B0 secrets pass) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: every PR, via `tests/test_no_secrets.py`. `scripts/check_secrets.sh`,
+`.env.example`.
+
+**Decision**: Check 2 of `scripts/check_secrets.sh` — "the gateway host appears nowhere
+outside `.env.example`" — obtains the host by **parsing it out of `.env.example`'s
+`AIR_BASE_URL` line at runtime**, never from a literal in the script.
+
+**Why**: The script exists to forbid the gateway host from appearing in any tracked file
+except `.env.example`. `scripts/check_secrets.sh` is itself a tracked file. Hardcoding the
+host in it would therefore **violate the rule the script enforces** — the guard would be
+the first thing it should flag, and either the check has to special-case its own source
+file or the rule quietly becomes "everywhere except two files". The rejected alternative
+was exactly that: hardcode the host and exempt the script. It was rejected because a rule
+with a carve-out for the enforcement mechanism stops being checkable — the next person to
+add a "temporary" exemption has a precedent, and the exemption list is where this kind of
+guard goes to die.
+
+Reading the value from the template also makes the check follow a change it would otherwise
+silently miss: if the gateway moves, `.env.example` is the one file that must be updated,
+and the guard re-targets itself with no second edit.
+
+The cost is a real dependency: the script hard-fails if `.env.example` is missing, and says
+so with the `git checkout --` command to restore it. That is the correct trade — a guard
+that cannot find its source of truth must refuse to report PASS.
+
+**Consequence**: **Everyone** — do not hardcode the host in the guard, and do not add an
+exemption list to it. If a check needs a value that lives in `.env.example`, read it from
+there. `tests/test_no_secrets.py` proves the guard catches a planted host as well as a
+planted key, so the mechanism cannot rot into a script that always passes.
+
+---
+
+## D-030 — `llm.timeout_seconds` is deliberately separate from `resolvers.timeout_seconds`
+
+**Established** 2026-09-03 (B2 config pass) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: P2, P4, A1. `config.yaml`, `src/settings.py` (`llm_settings()`,
+`resolver_settings()`), `docs/config_reference.md`.
+
+**Decision**: Two separate timeout keys. `resolvers.timeout_seconds: 10` is the **HTTP**
+timeout for catalogue lookups; `llm.timeout_seconds: 60` applies to **every model call, at
+any stage**. `tests/test_config.py` asserts they are not equal.
+
+**Why**: They are measuring different things and one number cannot serve both. A Crossref
+or OpenAlex lookup is a REST call that should come back in under a second; ten seconds is
+already generous, and a longer value means one dead endpoint stalls a whole document. A
+reasoning model judging a long bibliography is a different order of wait entirely — the
+judge model is `qwen3-235b-a22b-thinking-2507`, and ten seconds would time out **every
+judge call**. The rejected alternative was a single `timeout_seconds` reused by both, which
+is the obvious first shape and is what the config had before this pass: rejected because
+whichever value you pick breaks the other caller, and the failure is asymmetric and
+misleading. At 10s the judge never answers and A1 looks broken; at 60s a dead resolver
+endpoint holds a document open for a minute per reference and P4 looks slow.
+
+The test pinning them unequal is the load-bearing part. The two keys sitting in different
+blocks is not self-explaining — the natural instinct on reading two timeouts is to
+"simplify" them into one — so the reason is asserted rather than left in a comment.
+
+**Consequence**: **Ritik**'s P2 and P4, and **Arsha**'s A1, read the right one:
+`llm_settings()["timeout_seconds"]` for anything that calls a model,
+`resolver_settings()["timeout_seconds"]` for HTTP. Setting them equal reintroduces the bug
+and fails `test_llm_settings_are_separate_from_http_settings`.
+
+---
+
+## D-029 — The confidence-band `thresholds` shape was rejected
+
+**Established** 2026-09-03 (B2 config pass) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active (a **reversal** — the shape was proposed, then
+discarded)
+
+**Affects**: P5, R2, A1. `config.yaml` (`thresholds:`), `tests/test_config.py`.
+
+**Decision**: `thresholds:` holds **signal cutoffs** — `title_strong: 0.92`,
+`title_weak: 0.70`, `author_strong: 0.60`, `year_tolerance: 1`. The proposed shape
+`thresholds: {verified: 0.9, needs_check: 0.6, conflict: 0.3}` — a confidence cutoff per
+status — was **discarded**.
+
+**Why**: The two shapes look interchangeable and describe completely different classifiers.
+The plan's P5 is a **rule mapping over signals**: compare title similarity, author overlap,
+year delta and DOI match against cutoffs, and walk an ordered set of branches to a status.
+The proposed shape describes something else entirely — a model or heuristic that emits a
+confidence number, which is then **banded** into a status. That is not P5, and more
+importantly it is not what R2 measures. R2 scores status agreement against Roy's golden
+labels, and those labels were derived by walking P5's rule order (see the mapping walks in
+D-011 and D-015). A confidence-band classifier would produce different statuses for the
+same evidence, so the labels would be measuring a classifier that does not exist.
+
+The reason this is worth an entry rather than a config comment: **the wrong shape would
+have shipped silently and looked right.** Four plausible keys under a plausible name, and
+nothing in the config layer can tell that a threshold is being compared against the wrong
+quantity. It would have surfaced as unexplained recall loss at R2, attributed to the model
+rather than to the config shape. Recording it means the next person who reaches for a
+confidence band has to argue with the reason instead of rediscovering it.
+
+**Consequence**: **Ritik**'s P5 compares these four values against *signals*, never against
+a confidence. **Nobody** adds a per-status confidence cutoff to `thresholds:` — if a
+confidence band is ever wanted, it is a new key and a new entry, because it changes what
+R2's numbers mean. `tests/test_config.py::test_thresholds_match_the_plan` pins all four
+values, so retuning them requires saying so in a PR.
+
+---
+
+## D-028 — Document-level defects are excluded from the golden labels and reassigned to P1
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: R1, R2, **and P1 — this is B3 assigning work into Ritik's lane**.
+`eval/golden/FORMAT.md` § *Two things this format deliberately does not express*.
+
+**Decision**: Defects that apply to a whole document rather than to one reference — chiefly
+P1's no-heading fallback, the last-15%-of-pages path — are **out of the golden-label
+system**. They belong in a **separate fixture PDF under `tests/`, owned by P1**.
+
+**Why**: The label file's unit is the reference. Every row is keyed by `ref_id` and every
+assertion is about one bibliography entry, so a document-level defect has **nothing to
+attach to**. Two alternatives were rejected. Adding a document-level defect block to the
+schema was rejected because it would give R2 a second, differently-shaped thing to score
+for a single test case, and because it would not compose with the `defect_id` recall
+denominator — a document-level defect is not one of the 21. Attaching it to a synthetic
+`ref_id` was worse: it would **re-index every other label in the file**, and `ref_id`
+assignment is already flagged in FORMAT.md as the fragile coupling point between the
+labels and the ledger.
+
+The reassignment to `tests/` follows from where the defect actually is. The no-heading
+fallback is P1's behaviour, it is deterministic plain code, and a unit test over a
+purpose-built fixture PDF tests it far more precisely than a golden-label run over a real
+paper — where the fallback would be one signal among twenty-three rows of noise.
+
+**Consequence**: **Ritik** owns this: P1's card should carry a fixture PDF with no
+`References` heading, plus a test asserting the last-15% fallback fires and records its
+note. **Roy** does not label it, and should not accept a request to. FORMAT.md carries the
+one-line statement so the question does not get reopened at R1.
+
+---
+
+## D-027 — R2 must assert worklist correctness from the labels that already exist
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: R2, and **P6's ordering**. `eval/golden/FORMAT.md` § *`confidence`, `priority`
+and `checks[]` stay unlabelled*; `docs/defect_catalog.md` § 9.
+
+**Decision**: `confidence`, `priority` and `checks[]` are **not labelled**. But R2 must
+still assert the worklist, using only the fields already in the labels: **every reference in
+the top-3 worklist has `injected: true`**, and **no version-pair trap appears in the top-3
+worklist**.
+
+**Why**: Labelling a confidence number would pin ground truth to an uncalibrated scale —
+there is no agreed meaning for 0.7, so the label would encode whatever the pipeline happened
+to emit, which is the failure D-023 exists to prevent. That rules out labelling the
+ordering directly.
+
+But the ordering is exactly what a reviewer looks at, and it can be wrong while every
+aggregate metric passes. Per-status precision and recall are **order-blind**: a pipeline
+that classifies all 23 rows correctly and then sorts the worklist by `ref_id` scores a
+perfect metrics table and presents a useless top-3. **The top-3 worklist is a demo beat**,
+so that failure is both invisible to the metrics and highly visible to an audience.
+
+The insight is that the assertion needs no new field. `injected: true` already identifies
+which references should rank; the version-pair traps are already labelled `verified`, whose
+severity weight is `0.0`, so they belong at the bottom by construction. Two checks over
+existing data catch the whole failure class. The rejected alternative — adding an
+`expected_rank` or `expected_priority` field — was rejected because it would make R1 hand-
+compute a formula that D-009 has not finished deciding, and every label would need rewriting
+the day a formula constant changes.
+
+**Consequence**: **Roy** implements both assertions in R2. **Ritik**'s P6 must order the
+worklist by priority, and must keep `verified` at severity `0.0` so the traps sink — if P6
+ever gives `verified` a non-zero weight, this assertion fails and it should. Also related:
+D-014's separate named row for the traps.
+
+---
+
+## D-026 — `ref_id` is an opaque string, and a labels/ledger mismatch is a HARD ERROR
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: **P2** (which generates `ref_id`s), R1, R2. `eval/golden/FORMAT.md` § *`ref_id`
+assignment — the one coupling point*.
+
+**Decision**: `ref_id` is compared as an **opaque string**: `"R03"` and `"R3"` are different
+ids and neither normalises to the other. A `ref_id` in the labels with no matching ledger
+entry — or a ledger entry with no matching label — is a **hard error that stops the run**,
+not a miss.
+
+**Why**: Two decisions in one, and the second is the important one.
+
+Opaque comparison, rather than parsing the number out and comparing integers, because
+normalisation is where quiet wrongness lives. If R2 treats `R3` and `R03` as equal, then a
+labels file using one convention and a pipeline using the other appear to join correctly,
+and the join silently misaligns the moment padding width changes between papers — say a
+paper with 100+ references. Comparing opaquely means the *format* is part of the contract,
+which is checkable, rather than an implementation detail of two independent parsers.
+
+Hard error rather than miss, because the two failures need opposite responses and look
+identical in a score. A `ref_id` that does not join is not "the pipeline got this reference
+wrong" — it is "the labels and the ledger are describing different bibliographies", and
+every other number in the report is then meaningless. Scored as a miss, it produces a
+plausible slightly-lower recall figure that invites tuning; raised as an error, it says the
+one true thing: stop, the join is broken. FORMAT.md notes this is easy to misdiagnose,
+which is exactly why it must not be absorbed into a metric.
+
+**Consequence**: **Ritik**'s P2 must emit `ref_id` in the `R` + zero-padded-position form,
+with a **consistent width within one file**. **Roy**'s R1 uses the same form and R2 raises
+rather than scoring on any unmatched id. Nobody adds a normalisation step to "be helpful" —
+that is the bug, not the fix.
+
+---
+
+## D-025 — `document` matches `Ledger.document_name`, not the PDF filename
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: **P6** (which sets `document_name`), R1, R2. `eval/golden/FORMAT.md` top-level
+schema and § *Rulings*.
+
+**Decision**: A label file's top-level `document` field joins to
+**`Ledger.document_name`** — not to the PDF's filename on disk. It must also match the
+label file's own filename stem (checklist item 1), with `EXAMPLE.json` exempted as a
+documented specimen.
+
+**Why**: The join has to be to something the pipeline actually emits. `Ledger.document_name`
+is in the contract; the PDF's path is not, and it is the more volatile of the two — a
+corpus file gets renamed, moved under `eval/corpus/`, or copied, and none of that should
+break a scoring run. Joining on the filename would also make the labels depend on how a
+particular machine stores the file, which is the same class of mistake as the `.venv`
+absolute paths.
+
+The filename-stem requirement is a separate, cheap consistency check rather than a second
+join key: it means a human writing a label file cannot silently create one whose `document`
+points at a different paper than its own name suggests. That bug was actually caught by the
+13-item checklist on its first run against `EXAMPLE.json` — the specimen's stem did not
+match its `document` field, which would have made R2 fail on a human-written file. Being
+two independent statements (join on `document_name`; keep the stem in step) is what let the
+checklist find it.
+
+**Consequence**: **Ritik**'s P6 sets `Ledger.document_name` to a short identifier with no
+spaces or path separators, and must not set it to the PDF's basename-with-extension.
+**Roy** names each label file `<document>.json`. **Roy**'s R2 joins on `document_name` and
+may check the stem.
+
+---
+
+## D-024 — Indicator matching is exact-set, not subset
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: R2, and through it **every** indicator decision — D-011, D-013, D-015, D-018,
+D-020. `eval/golden/FORMAT.md` § *`expected_indicators` is a SET, not a sequence*.
+
+**Decision**: `expected_indicators` is compared as an **unordered set, exactly**. Not as a
+subset, not as a "contains at least". `[]` is therefore a **positive assertion that the
+pipeline emitted no indicators**, not a wildcard.
+
+**Why**: This is the decision that gives every other indicator ruling force, and it is easy
+to underrate because it reads like a serialisation detail.
+
+Under subset matching, `[]` matches anything — so a label of `needs_check` + `[]` for a
+wrong year would be satisfied by a pipeline emitting
+`needs_check` + `[version_mismatch, duplicate_entry, orphan]`. **D-011 and D-020 would have
+no teeth at all**: the entire argument for why `version_mismatch` must not fire on year
+divergence rests on a spurious indicator being *detectable*, and under subset matching a
+spurious indicator is free. The same applies to D-015 and D-018, whose empty sets are
+deliberate records of a gap in the closed vocabulary rather than "we did not check".
+
+Unordered, because indicator order carries no meaning and ordering it would make R2 fail on
+a pipeline that is right — a set semantics with a list serialisation.
+
+The rejected alternative was subset matching, on the reasonable-sounding grounds that it is
+more forgiving of a pipeline that adds a useful extra signal. It was rejected because
+"forgiving" here means "cannot detect a false alarm", and false alarms are the failure mode
+the plan's risk register says kills the pitch. A metric that cannot see the thing you are
+most afraid of is not a lenient metric, it is the wrong metric.
+
+**Consequence**: **Roy**'s R2 compares indicator arrays with set equality and no duplicates
+within an array (checklist item 7). **Ritik**'s P5 and **Arsha**'s A1 must not emit
+"informational" extra indicators — every indicator emitted is scored, and an unlabelled one
+is a miss on an otherwise-correct classification.
+
+---
+
+## D-023 — One defect, one expected status — and an ambiguous defect gets SPLIT
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: **R1's corpus construction**, R2's recall. `eval/golden/FORMAT.md` § *Rule: one
+defect, one expected status*. Not in the plan.
+
+**Decision**: Every injected defect maps to **exactly one** `expected_status`. If a defect
+could plausibly land on two statuses, **the injection is wrong and must be split into two
+separate injections**, each with a single unambiguous outcome. The label is never the thing
+that gets adjusted.
+
+**Why**: This is the rule that keeps recall honest, and the direction of the fix is the
+whole point.
+
+The failure it prevents: someone finds a defect whose correct status is genuinely arguable,
+writes down whichever status the pipeline produced that day, and the label becomes a
+**description of current behaviour rather than of correct behaviour**. Recall then measures
+agreement between the pipeline and itself, which is a number that can only go up. One
+ambiguous label poisons every metric it feeds, and it does so invisibly — nothing in the
+report says "this row is circular".
+
+The rejected alternative was to allow a set of acceptable statuses per defect, scoring a
+hit if the pipeline produced any of them. That is superficially more honest about genuine
+ambiguity, and it was rejected for two reasons. It makes recall non-comparable between runs
+(a pipeline that flips between two accepted answers scores identically to one that is
+stable), and it removes the pressure that makes the corpus good: the discipline of having to
+produce an unambiguous outcome is what forces the injection to be *sharp*. D-012 is this
+rule in action — the malformed defect has a mild variant whose status is arguable and a
+severe variant whose status is not, and the corpus injects only the severe one.
+
+**Consequence**: **Roy** — when you find yourself writing "this should be `needs_check`, or
+maybe `conflict`", stop and change the **injection**, not the label. Two clean defects score
+honestly. This constrains how the corpus is built, not just how it is written down, and it
+is the reason several catalog entries carry an injection constraint (DOI-less references in
+D-011 and D-015, the severe variant in D-012, an otherwise-clean reference in D-017).
+
+---
+
+## D-022 — The B3 label schema extends the plan's example with three more fields
+
+**Established** 2026-09-03 (B3) · **Logged** 2026-09-03 (B1-unblock) ·
+**Decided by** Ritik · **Status**: active
+
+**Affects**: **R1** (writes 23 rows against it) and **R2** (reads all of it).
+`eval/golden/FORMAT.md` top-level and per-label schema, `eval/golden/EXAMPLE.json`.
+
+**Decision**: The label format adds three things beyond the plan's minimum example:
+**`control`** (top level), **`source: {license, origin_url, origin_file}`** (top level), and
+**`verified_by` / `verified_on`** (per label, optional). `defect_id` is the fourth addition
+and is covered separately by **D-016** — see there for the 21-vs-23 rule and the
+all-rows-must-match requirement.
+
+Specifying this format *is* B3's job, and the plan's example is explicitly a minimum shape,
+so extending it is in scope. Each field exists to stop R2 inferring something from the
+`defect` free text, which FORMAT.md is explicit is never scored.
+
+**Why**:
+
+**`control` is the load-bearing one.** R2's release-blocking check is "zero false
+accusations on the clean control", so R2 has to know which file *is* the control. The
+rejected alternative was to infer it — the control is the file where every label has
+`injected: false`. That inference is wrong in a way that fails silently and at the worst
+moment: it holds only while every spiked paper has its labels written, and it breaks the
+instant a spiked paper is committed before its label file is finished. At that point a
+second file looks like a control, and the release gate either runs twice or runs on the
+wrong paper. A read field cannot drift; an inference over data that arrives incrementally
+can. Explicit beats derived whenever the derivation depends on the completeness of
+something else.
+
+**`source` makes an R1 DoD box checkable.** R1's card requires "no copyright-restricted or
+student material", which as written is a claim someone asserts in a PR body and nobody can
+verify afterwards. `license` — one of five allowed strings, anything else a hard error —
+turns it into a property of the tree. `origin_url` and `origin_file` do the same for
+provenance: `origin_file` names the untouched original so anyone can reproduce R1 step 3's
+diff, which is why `eval/corpus/originals/` stays tracked. **This also constrains paper
+selection**: Roy can only use papers whose licence is one of the five.
+
+**`verified_by` / `verified_on` are optional on purpose.** R1's test plan has a teammate
+spot-verify five random labels. Without a field, that verification exists only in a Slack
+message. Making it *required* would be worse than useless — most labels will never be
+spot-checked, so a required field would be filled with placeholder noise, and a field
+everyone fills in mechanically records nothing. Optional means its presence is information.
+
+**Consequence**: **Roy** — R1 writes all three; `source.license` restricts which papers are
+eligible; R2 must **read** `control` and must never infer it. `verified_by`/`verified_on`
+are paired (checklist item 10) — one without the other is an error. **Nobody** adds a field
+to this schema without an entry here, because R1 writes 23 rows against it and a schema
+change after R1 starts is 23 hand-edits.
 
 ---
 
@@ -518,7 +932,8 @@ formula. That is now Arsha, and it is five minutes at Sync 1.
 ## D-008 — Three tiers of file ownership, and the lane rule's exception for shared infra
 
 **Date** 2026-09-03 · **Decided by** Ritik, refined by Claude's analysis of the lane rule ·
-**Status**: **open** — `tests/test_layout.py` must be amended
+**Status**: active, **CLOSED** by the B1-unblock PR — `tests/test_layout.py` now encodes
+all three tiers
 
 **Affects**: every module. `docs/module_status.md` § File ownership, `tests/test_layout.py`.
 
@@ -553,16 +968,38 @@ the check walks **every** file under `src/`, so the moment `src/judge/agent.py` 
 imports `src/judge/prompts.py`, the test will flag **Arsha's own intra-package import** as a
 lane violation. She will hit it on her first A1 commit.
 
-**Consequence**: **Arsha and Ritik** amend `tests/test_layout.py` before A1 lands, so that
-the check exempts files that are themselves inside the lane they import from, while still
-forbidding genuine cross-lane *feature* imports. Nobody writes a second gateway client.
-Nobody redefines a tier-1 file in their own lane. Sync 1.
+**Consequence — DONE.** `tests/test_layout.py` was rewritten in the B1-unblock PR so the
+test encodes the rule instead of approximating it:
+
+- **`SHARED_INFRA` and `LANES` are module-level constants** with a comment citing this
+  entry, so moving a file between tiers is a data change rather than a logic change.
+- **`lane_of(module)` returns `None` for shared infra** — belonging to no lane is exactly
+  what makes it importable from every lane — and **`cross_lane_offenders(owner, names)`
+  skips a file's own lane**, so `src/judge/agent.py` importing `src/judge/prompts.py` is
+  fine. That was the live bug.
+- **Shared infra is asserted POSITIVELY** (`test_shared_infra_is_importable_from_any_lane`,
+  parametrised over all four modules), so a future "tightening" that adds `src.llm` to a
+  lane's prefix list fails with a pointer back here.
+- **Both directions are enforced.** `test_arshas_lane_may_not_import_ritiks_pipeline` is
+  new and is A2's own DoD box — the dashboard renders `ledger_fixture.json` fully offline,
+  and nothing previously stopped `dashboard/app.py` importing `src/pipeline`.
+- **The rules are armed, not vacuously true** while `src/judge/` and `dashboard/` are
+  absent: three tests assert that the classifier *does* reject the forbidden imports.
+
+Verified by simulation before merge: a realistic `src/judge/{__init__,prompts,agent}.py`
+plus `dashboard/{app,theme}.py` importing intra-package **and** `src.llm`, `src.settings`,
+`src.contract` → **17 passed**. `dashboard/app.py` importing `src.pipeline` → caught.
+`src/matching/rules.py` importing `src.judge.agent` → caught.
+
+Standing obligations: **nobody** writes a second gateway client, and **nobody** redefines a
+tier-1 file inside their own lane.
 
 ---
 
 ## D-007 — `resolvers.mailto` moves to `.env` as `CROSSREF_MAILTO`
 
-**Date** 2026-09-03 · **Decided by** Ritik · **Status**: active — **NOT YET IMPLEMENTED**
+**Date** 2026-09-03 · **Decided by** Ritik · **Status**: active, **IMPLEMENTED** in the
+B1-unblock PR
 
 **Affects**: B2, P4. `config.yaml:17`, `.env.example`, `src/settings.py`,
 `tests/test_config.py:68`, `docs/config_reference.md`, `docs/setup.md`.
@@ -587,62 +1024,106 @@ unset `CROSSREF_MAILTO` must raise before P4 makes its first request, naming the
 and pointing at `.env.example`, exactly as `src/llm.py` already does for `AIR_API_KEY` and
 `AIR_BASE_URL`.
 
-**Consequence**: **Ritik** implements this — it is a four-file change and it is **not done**.
-`config.yaml:17` still carries `mailto: your-asurite@asu.edu`,
-`tests/test_config.py:68` still asserts `"@" in config["mailto"]`, and
-`docs/config_reference.md` still documents it as a config key whose failure mode is silent
-demotion. Landing it means: remove the key, add `CROSSREF_MAILTO` to `.env.example`, add a
-reader to `src/settings.py` that raises when unset, replace the config test with one that
-asserts the key is *absent* (the pattern already used for the dropped critic keys — see
-D-004), and update `config_reference.md` and `docs/setup.md`. Sensible to land with P4,
-whose card is the first code that needs it, but it must not be forgotten in between — which
-is why it is called out under the Sync 1 section as implementation debt rather than left in
-the body of this file.
+**A third reason, found while implementing this.** A real mailbox in a tracked file is the
+same *category* of mistake as a pasted key — not the same severity, since nobody can spend
+your inbox, but the same shape: a real personal identifier, committed under an org name
+that looks public, discoverable by anyone who clones, and permanent in the history once
+pushed. The B0 pass already had one near-miss of exactly this shape with the first 16
+characters of a live key (`docs/worklog.md`, session 2). The lesson generalised: the
+control has to be mechanical. Behind `.env`, `.gitignore` enforces the rule instead of a
+comment asking each teammate to remember it.
+
+**Consequence — DONE.** Landed in the B1-unblock PR:
+
+| Change | Where |
+|--------|-------|
+| `resolvers.mailto` removed, replaced by a comment pointing here | `config.yaml` |
+| `CROSSREF_MAILTO` added as a name with a placeholder value | `.env.example` |
+| `crossref_mailto() -> str` — reads the env, raises on unset **or whitespace** | `src/settings.py` |
+| `mailto` asserted **absent** from config; reader asserted to raise unset and to strip when set | `tests/test_config.py` (+3 tests) |
+| `mailto` row removed; API section and a *why it is a credential* section added | `docs/config_reference.md` |
+| Step 4 now lists all three env names, with the failure mode for each | `docs/setup.md` |
+| P4 row records the obligation and marks this implemented | `docs/module_status.md` |
+
+**Ritik**'s P4 must call `settings.crossref_mailto()` before its first request and let it
+raise. **Arsha and Roy** need to add `CROSSREF_MAILTO` to their own `.env` — nothing calls
+it yet, so an absent value is currently silent, and P4 will be the first code to notice.
+The reader raises rather than returning `""` so a caller cannot pass emptiness through to a
+`User-Agent` header and get the demotion anyway.
 
 ---
 
-## D-006 — The red contract test was written and then removed
+## D-006 — No test asserts the contract's absence, in either direction
 
-**Date** 2026-09-03 · **Decided by** Ritik, on Claude's analysis · **Status**: active
-(a **reversal**)
+**Date** 2026-09-03, **amended 2026-09-03** (B1-unblock pass) · **Decided by** Ritik, on
+Claude's analysis · **Status**: active, **closed by the B1-unblock PR** (a **reversal**,
+twice)
 
-**Affects**: B1, and how this project uses failing tests. `tests/test_layout.py`.
+**Affects**: B1, and how this project uses tests to signal unfinished work.
+`tests/test_layout.py`.
 
-**Decision**: A test that would **fail** until `src/contract.py` existed was written into
-the B0 branch and then **removed** before the PR. What shipped instead is
-`tests/test_layout.py::test_contract_does_not_exist_yet`, which asserts the file's
-**absence**, passes today, and whose docstring instructs Arsha to delete it as part of the
-B1 diff.
+**Decision**: `tests/test_layout.py` contains **no assertion about `src/contract.py` at
+all** — neither that it exists nor that it does not. **B1's diff therefore touches no test
+in that file**, and creating `src/contract.py` leaves the suite green.
+
+This entry records two passes at the same problem:
+
+1. **A red test was written and removed before the B0 PR.** It would have failed until
+   `src/contract.py` existed.
+2. **The green absence-assertion that replaced it was itself removed** in the B1-unblock
+   pass, before Arsha branched. That is the amendment, and it is the operative half.
 
 **Why**: The intent behind the red test was sound — make the critical path impossible to
-ignore by putting it in the test output, where nobody can miss it. The reason it was
-reversed is what a red suite would actually have taught. Arsha's **first experience of this
-repo** would have been `git checkout -b`, `pytest`, and a failure she did not cause. The
-available responses to that are: fix it (impossible — B1 is hours of work), ignore it (and
-now the suite is permanently red, so the next real failure is invisible), or **delete the
-assertion to get to green**. The third is the one people actually pick under time pressure,
-and it is a habit that generalises: on a 20-hour build with a release gate that depends on
-tests meaning something, training a teammate that assertions are negotiable is a far worse
-outcome than a forgotten to-do.
+ignore by putting it in the test output, where nobody can miss it. What a red suite would
+actually have taught is the problem. Arsha's **first experience of this repo** would have
+been `git checkout -b`, `pytest`, and a failure she did not cause. The available responses
+are: fix it (impossible — B1 is hours of work), ignore it (and now the suite is permanently
+red, so the next real failure is invisible), or **delete the assertion to get to green**.
+The third is what people pick under time pressure, and the habit generalises: on a 20-hour
+build whose release gate depends on tests meaning something, teaching a teammate that
+assertions are negotiable costs more than a forgotten to-do.
 
-The absence-assertion gets the same reminder without the cost. It is green, so the suite
-stays trustworthy; it is named for the thing it is waiting on, so it appears in every test
-run; and deleting it is *legitimately* part of B1's diff rather than a workaround, so the
-correct action and the tempting action are the same action. A red test says "someone has
-failed"; a green test named `test_contract_does_not_exist_yet` says "this is the next thing".
+`test_contract_does_not_exist_yet` looked like it escaped that, and for a while the
+argument was that it did: green today, named for the thing it was waiting on, and deleting
+it was *legitimately* part of B1's diff rather than a workaround. **That argument does not
+survive contact with the actual sequence of events.** Arsha's first B1 commit is
+`src/contract.py`. The moment she makes it, the suite goes red — for doing exactly the
+right thing — and the prescribed fix is *deleting an assertion*. The docstring saying
+"DELETE THIS TEST IN THE B1 PR" makes it discoverable, not harmless: it makes
+delete-the-assertion the **documented, correct, first-thing-you-learn** response to a red
+suite. That is the precise habit the first pass rejected, arrived at by a longer route.
 
-Recorded as a reversal because the reasoning is transferable and the conclusion is not
-obvious: **do not use a failing test as a to-do list for another person.**
+The rejected alternative, both times, was keeping a test as the reminder. It was rejected
+because a test is the wrong instrument for the job. A test says "this is broken". A to-do
+says "this is next". They are different statements and the test suite can only make the
+first one. The reminder belongs where reminders belong — `docs/module_status.md`, which now
+carries it in prose, and this file.
 
-**Consequence**: **Arsha** deletes `test_contract_does_not_exist_yet` as part of the B1 PR;
-the docstring says so. Nobody adds a red test to signal unfinished work — the mechanism for
-that is this file, `docs/module_status.md`, and an absence-assertion.
+**The generalisation, which is the transferable part:** *do not use a test as a to-do list
+for another person — and that includes a green test whose resolution is deleting an
+assertion.* If removing an assertion is the intended outcome of someone else's work, the
+assertion was documentation wearing a test's clothes.
 
-**Traceability**: the surviving artifact is verified —
-`tests/test_layout.py:46`, green in the 39-test suite on `main`. The red variant that was
-written and removed **is not verified from the tree**: both feature branches were
+**Consequence**: **Arsha** creates `src/contract.py` and the suite stays green; there is
+nothing in `tests/test_layout.py` for her to delete. **Nobody** adds a test — red or green
+— to signal unfinished work. `src/pipeline.py`'s absence assertion
+(`test_pipeline_module_is_reserved_for_p6`) is **deliberately kept** and is not an exception
+to this rule: nobody is scheduled to create `src/pipeline.py` as a package, so that test
+guards against a mistake rather than waiting on a task, and its resolution is not "delete
+the assertion" but "stop doing that".
+
+**Traceability**: the removal is verified — `tests/test_layout.py` collected 11 tests
+before this PR including `test_contract_does_not_exist_yet`, and 17 after, without it. The
+**red** variant from pass 1 is **not verified from the tree**: both feature branches were
 squash-merged, so the intermediate commits no longer exist and
 `git log --all -S "test_contract"` returns only the squash commit `a579dab`.
+
+**One correction to this entry's own earlier wording.** As first written, its title and
+Decision said the contract test "was written and then REMOVED", which read as though the
+*absence*-assertion had already been removed. It had not — it was live on `main` at
+`278fccd`, and `docs/module_status.md` was correct to say so. The two documents did not
+actually contradict each other; the entry was describing the red variant and was easy to
+misread as describing the green one. Rewritten above to state what is true of the tree.
 
 ---
 
@@ -833,3 +1314,31 @@ disagree, the plan wins and the doc is a bug. **Ritik** rewrote all five B0 docs
 (commit `5f7cf6f`). Any doc asserting a module mapping cites the plan, and readers were told
 explicitly not to trust a stale local copy of any doc in this repo — that warning is at the
 top of `docs/pr/B0.md`.
+
+---
+
+## Documented choices that are deliberately NOT decisions
+
+The sweep that produced D-022 to D-031 also found four choices that were considered for an
+entry and **left out on purpose**. They are real, they are written down, and their owner
+should be free to change them without amending a decision log:
+
+- **The 7-7-7 defect split across three papers** — Roy's, in `docs/defect_catalog.md`. The
+  plan says only "~21 across three papers"; a different split may suit the papers he picks.
+- **The `defect_id` numbering, fixed before paper selection** — Roy's, same file. Ids that
+  never shift let R2 be written before a PDF exists, at the cost of not grouping by paper.
+  Renumbering is cheap **before** R1 starts and expensive after, which is a note, not a
+  rule.
+- **The clean control being in the same field and of similar length** as the spiked papers —
+  Roy's, same file. Guidance for paper selection, and he is the one selecting.
+- **`tests/data/sample.pdf` vs the plan's `tests/sample.pdf`** — Ritik's, in
+  `docs/module_status.md` § Deviations. P1's card calls for a real open-access paper, so P1
+  replaces the file anyway and should settle the path then.
+
+**Why this distinction is worth keeping.** An entry in this file is a commitment that
+someone else may now be relying on, and the standing rule at the top makes changing one a
+documented act. That is exactly right for a rule that constrains another person's module,
+and exactly wrong for a working choice inside one's own lane — logging those would convert
+every revision an owner makes into a decision reversal, which raises the cost of improving
+your own work. **The test is not "was this a choice" but "does someone else's unwritten code
+depend on it".** All four of these fail that test; all ten of D-022 to D-031 pass it.
