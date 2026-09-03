@@ -1,0 +1,95 @@
+# Regenerate STATUS.md on every push to main and commit it back.
+#
+# STATUS.md is generated (scripts/update_status.py). Locally a git hook keeps it
+# fresh for the person who committed; this job keeps the copy ON MAIN fresh for
+# everyone else, so `git pull && cat STATUS.md` is true for a teammate who has not
+# run anything.
+#
+# Two things this workflow is deliberate about:
+#
+#   * Recursion. The job commits to main, which is a push to main, which would
+#     trigger the job. The `if:` below skips any commit whose message STARTS WITH
+#     the status marker, and this job's own commits always do.
+#
+#     It matches on the prefix rather than anywhere in the message, and that is not
+#     a style preference - the first version used `contains()` and skipped the very
+#     commit that introduced this file, because the commit body happened to mention
+#     the marker while describing this workflow. A guard that silently skips real
+#     pushes whenever somebody quotes the marker in a commit body is worse than no
+#     guard: STATUS.md goes quietly stale and everyone keeps trusting it. The bot's
+#     own commit subject is exactly "<marker> regenerate STATUS.md", so a prefix
+#     match is airtight for the case the guard actually exists for.
+#   * Failing loudly. If the repo's Actions permissions do not allow a push, this
+#     job FAILS with a red X and names the setting to change. It does not swallow
+#     the error, because "the status file is quietly six hours stale and everyone
+#     trusts it" is a much worse outcome than a failed job.
+
+name: status
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  # Serialise: two of these racing would both try to push the same file.
+  group: status-md
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    if: "!startsWith(github.event.head_commit.message, '[status]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and all remote refs: the report reads `git log -25` and
+          # `git branch -r`, and a shallow single-branch clone has neither.
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      # The published-interface table works by importing each module, so the runner
+      # needs the same dependencies as a dev machine - otherwise every row would read
+      # "missing dependency" and the committed table would fight the local one.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Regenerate STATUS.md
+        run: python scripts/update_status.py
+
+      - name: Commit STATUS.md if it changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- STATUS.md; then
+            echo "STATUS.md unchanged - nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add STATUS.md
+          git commit -m "[status] regenerate STATUS.md"
+          if ! git push origin HEAD:main; then
+            echo "::error title=STATUS.md push rejected::The workflow could not push to main."
+            echo ""
+            echo "This job has 'permissions: contents: write', so the block is at the"
+            echo "repository or organisation level, not in this file. Fix it at:"
+            echo "  Settings -> Actions -> General -> Workflow permissions"
+            echo "  -> select 'Read and write permissions'"
+            echo ""
+            echo "If main is protected, also allow this actor to push, or add"
+            echo "github-actions[bot] to the branch protection bypass list."
+            echo ""
+            echo "Until this is fixed STATUS.md on main is STALE - regenerate it"
+            echo "locally with: python scripts/update_status.py"
+            exit 1
+          fi
+          echo "Pushed a regenerated STATUS.md to main."

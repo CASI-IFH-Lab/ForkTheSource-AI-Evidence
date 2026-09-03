@@ -1,119 +1,77 @@
-# Arsha — progress
+# progress — arsha
 
-Append-only. One block per event. Status words: READY, STARTED, MERGED, BLOCKED, AHEAD,
-REQUEST, OBJECTION, SCOPE-CUT. Newest at the bottom.
+**Append-only. Only arsha writes in this file.** Never edit or delete a block that
+is already here, including your own — if you were wrong, append a correcting block.
+Because exactly one person writes this file and only ever adds to the bottom, it can
+never produce a merge conflict.
+
+`scripts/update_status.py` parses this file into `STATUS.md`. Full format, the eight
+status words, and how to retire a REQUEST: [progress/_FORMAT.md](_FORMAT.md).
+The short version:
+
+```
+## <clock> — <MODULE> <STATUS-WORD>
+branch: <branch> -> main @ <sha>          (omit unless MERGED)
+tests: <n> passed
+publishes: <the exact public symbols and signatures this module exports>
+notes: <one or two lines>
+next: <what you start now, with an ETA>
+```
+
+Status words, exactly these: `READY` `STARTED` `MERGED` `BLOCKED` `AHEAD`
+`REQUEST` `OBJECTION` `SCOPE-CUT`. `<clock>` is hackathon-relative (`2:40`), not
+wall time. One line per field.
+
+## Worked example
+
+The two blocks below are **inside a code fence, and the parser skips fenced text** —
+they are here to copy, not to report. Your real blocks go after the horizontal rule,
+unfenced, newest at the bottom.
+
+```
+## 1:05 — P2 MERGED
+branch: arsha/p2-resolvers -> main @ 4f1a9c2
+tests: 148 passed
+publishes: resolve(ref: Reference, config: dict | None = None) -> ResolvedSource | None
+notes: Crossref first, then arXiv; 404 and timeout both return None, never raise.
+next: P3 evidence builder, ETA 2:10
+
+## 1:30 — REQUEST -> @arsha
+NEED: Verdict.rationale widened to str | None in src/contract.py
+WHY: rule_based_status() has no rationale to give for the trivially-verified case.
+UNBLOCKED MEANWHILE BY: passing the literal "rule: exact DOI match" for now.
+BLOCKS ME AT: 2:30, when the judge starts writing real rationales.
+```
 
 ---
 
-## 0:15 — READY
 
-hour-zero checklist, all five lines:
-
-```
-git checkout main && git pull        -> main @ 663db6a
-python --version                     -> 3.11 / 3.14.6 (repo .venv is the interpreter)
-pytest                               -> 131 passed in 4.08s
-./scripts/check_secrets.sh           -> PASS
-python -c "...get_client().models.list()..."  -> AIR models: 48
-```
-
-note: on this machine the system `python` has no pytest. Everything below runs through
-`./.venv/Scripts/python.exe -m pytest`. Same interpreter the 131 came from.
-
-next: A1, ETA 2:20.
-
----
+## 0:15 — A1 READY
+tests: 131 passed
+publishes: nothing yet
+notes: hour-zero checklist green — main @ 663db6a, check_secrets PASS, AIR gateway lists 48 models. System python here has no pytest, so every run below is ./.venv/Scripts/python.exe -m pytest, the same interpreter the 131 came from.
+next: A1 judge on the fixture, ETA 2:20
 
 ## 0:20 — A1 STARTED
+tests: 131 passed
+publishes: nothing yet
+notes: branch arsha/a1-judge, built against tests/fixtures/ledger_fixture.json only — zero dependency on Ritik's lane until A3.
+next: A1 merge, ETA 2:20
 
-branch: `arsha/a1-judge`
-building against `tests/fixtures/ledger_fixture.json` only. No dependency on Ritik's lane.
+## 1:55 — A1 OBJECTION
+tests: 202 passed
+publishes: nothing yet
+notes: two Tier-1 shapes I would have drawn differently and did NOT change (R3) — Verdict has nowhere to put per-call latency, so A3's progress strip must carry timing outside the contract; and MatchEvidence.notes has no provenance, so the judge cannot tell a resolver note from a parser note. Both are fine for Phase 1 and both are PHASE2.
+next: A1 merge, ETA 2:20
 
----
+## 1:55 — REQUEST -> @ritik
+NEED: P2's gateway calls to go through client.with_options(max_retries=0), the same one line src/judge/agent.py now uses.
+WHY: the OpenAI SDK retries twice by default underneath us, so on top of llm.max_retries that is up to six requests per item — I measured 182 seconds of wall clock on ONE reference before it reached the gateway-error rung, and it also makes your per-stage progress timing uninterpretable.
+UNBLOCKED MEANWHILE BY: nothing — A1 already does this in its own file, so this is a heads-up for your lane rather than a blocker for mine.
+BLOCKS ME AT: never. Measurement and full reasoning: docs/decisions.md D-202.
 
-## 1:5x — A1 READY TO MERGE
-
-branch: `arsha/a1-judge`
-tests: **202 passed, 1 skipped** (131 -> 202; the skip is the live AIR test, see below)
-publishes:
-
-```python
-judge_reference(ref, ev, fallback_fn=None) -> Verdict      # NEVER raises
-gate_batch(verdicts, total: int) -> list[Verdict]
-stub_status(ev) -> tuple[str, float, str]                  # the default fallback
-```
-
-files: `src/judge/{__init__,prompts,agent,gate}.py`, `tests/test_judge.py`.
-
-notes:
-
-- `judge_model` records the path every time: the configured model name, `fallback:stub`,
-  `fallback:rule_based`, or `fallback:<name>` for anything else injected. Honest
-  degradation is a property you can read off the ledger.
-- ladder: no JSON -> retry once (`llm.max_retries`) -> fallback. JSON with a bad schema,
-  gateway error, timeout, or no key -> fallback immediately.
-- two prompt rules are enforced in code as well, **D-201**: the retraction floor and the
-  parse-noise ceiling.
-- the gate is code-only, **D-200 closes D-004**. No critic key comes back.
-- chaos test: 600 `judge_reference` calls against randomly-raising / garbage-returning
-  clients across three shapes of evidence. Zero exceptions.
-
-next: A2 dashboard, ETA 4:10.
-
----
-
-## REQUEST — @ritik (1:5x)
-
-```
-NEED: P2's extractor to send its gateway calls through
-      client.with_options(max_retries=0), the same one line agent.py now uses.
-WHY:  the OpenAI SDK retries TWICE by default, underneath us and invisibly. On top of
-      llm.max_retries that is up to six requests per item. Measured today: one
-      reference took 182 SECONDS of wall clock to reach the "gateway error" rung
-      because the SDK quietly re-sent it three times at llm.timeout_seconds each.
-      On thirty references in P2 that is the demo. It also makes your per-stage
-      progress callback report a number nobody can interpret.
-      Full reasoning and the measurement: docs/decisions.md D-202.
-UNBLOCKED MEANWHILE BY: nothing — A1 already does this in its own file. This is a
-      heads-up for your lane, not a blocker for mine.
-BLOCKS ME AT: never.
-```
-
----
-
-## OBJECTION — none to log against a frozen interface
-
-`src/contract.py` and `src/priority.py` were fine to build A1 against. Two things I would
-have shaped differently, recorded here rather than changed (R3), both **PHASE2**:
-
-- `Verdict` has nowhere to put per-call latency, so the A3 progress strip will have to
-  carry timing outside the contract. Not worth a Tier 1 change mid-flight.
-- `MatchEvidence.notes` is `list[str]` with no provenance, so the judge cannot tell a
-  resolver note from a parser note. It reads them all the same way. Fine for Phase 1.
-
----
-
-## PHASE2 — noted while working, not acted on
-
-- The gate's re-judge path takes a `rejudge_fn` and nothing supplies one yet. A3 or the
-  Reviewer Brief should wire `partial(judge_reference, ...)` into it so a poisoned verdict
-  gets a real second attempt instead of going straight to forced `needs_check`.
-- An LLM critic that checks the rationale is actually supported by the evidence is a good
-  idea — as a Phase 2 feature, with the config key added deliberately. See D-200.
-
----
-
-## NOTE — the AIR gateway is flaky today, and it is not us
-
-Observed during A1, with nothing changed between runs:
-
-```
-test_live_air_smoke -> SKIPPED (APITimeoutError)   21.6s
-test_live_air_smoke -> passed                       1.78s
-test_live_air_smoke -> passed                       1.75s
-```
-
-When it answers, the judge model answers in **under two seconds**. When it does not, it
-does not answer at all. **D-203** makes the live test skip rather than fail on that, so
-nobody's `pytest` goes red because of the VPN. Before the demo, run it and require
-**passed**, not skipped.
+## 1:56 — A1 OBJECTION
+tests: 202 passed
+publishes: nothing yet
+notes: the AIR gateway is intermittently unreachable today and it is not us — three consecutive live-test runs with nothing changed went SKIPPED (APITimeoutError, 21.6s), passed (1.78s), passed (1.75s). When it answers, the judge answers in under two seconds. D-203 makes the live test skip rather than fail on that so nobody's pytest goes red because of the VPN; before the demo, run pytest tests/test_judge.py::test_live_air_smoke -rs and require passed, not skipped.
+next: A1 merge, ETA 2:20

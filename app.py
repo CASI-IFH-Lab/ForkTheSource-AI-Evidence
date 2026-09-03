@@ -21,7 +21,9 @@ st.set_page_config(page_title="ForkTheSource", page_icon="🍴", layout="wide")
 # The cache key is the file's bytes: same PDF, no second read.
 @st.cache_data(show_spinner="Reading the PDF...")
 def read_pdf(pdf_bytes: bytes) -> dict:
-    return pdf_parser.run(pdf_bytes)
+    # config is required positional on every stage entry point so P6 can call them
+    # all the same way. P1 reads nothing from it, and None says so explicitly.
+    return pdf_parser.run(pdf_bytes, None)
 
 
 st.title("ForkTheSource")
@@ -67,6 +69,7 @@ with st.expander("Page by page"):
 
 st.divider()
 st.caption(
-    "Next up: P1 finishes the body/references split, then P2 turns each reference "
-    "into contract Reference objects. See docs/architecture_map.md."
+    "This shell shows raw text only. P1 also returns the body/references split - "
+    "`pdf_parser.parse_pdf()` - which P2 turns into contract Reference objects. "
+    "See docs/architecture_map.md."
 )

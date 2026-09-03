@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Regenerate STATUS.md after a commit. Silent on success, never fails the commit.
+#
+# This leaves STATUS.md modified in the working tree rather than amending the commit
+# you just made - amending from a hook rewrites history under you and is how people
+# lose work. On main, the GitHub Action commits the regenerated file; on a branch,
+# just include it in your next commit or leave it, it is regenerated either way.
+set -u
+. "$(dirname "$0")/_status_common.sh"
+status_hook_run
+exit 0
