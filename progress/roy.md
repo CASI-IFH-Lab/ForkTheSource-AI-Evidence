@@ -142,3 +142,10 @@ notes: The label lookup tolerates a .pdf suffix on Ledger.document_name (paper1.
        so both spellings resolve rather than one of them becoming a missing-label hard
        error at the worst possible moment. Drop the tolerance once @ritik posts P6's
        document_name. No D-number per REPLAN §6.
+
+## 5:10 — R2 MERGED
+branch: roy-r2-harness -> main @ 54fe414 (squash, PR #19) — lane state, restated for STATUS.md
+tests: 494 passed, 1 skipped, plus one wall-clock timing failure in tests/test_resolvers.py under a loaded machine that passes in isolation
+publishes: python eval/run_eval.py --fixtures <ledger.json> [<ledger2.json> ...] [--labels-dir DIR] — exit 0 clean, 1 RELEASE GATE FAIL, 2 hard error
+notes: Both release gates are live and hard-FAIL non-zero; the corpus is unscored until a P6 ledger exists. Full detail in the 5:05 block and the two objections above.
+next: R2 --full plus the worklist assertion (D-027), Phase 2 row 1. Not started.
