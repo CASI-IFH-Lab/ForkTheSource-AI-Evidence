@@ -2,10 +2,9 @@
 
 Public interface (P4, P5, A3 import only these):
 
-    split_entries(references_text) -> list[str]     plain code, no model
-    extract_references(doc)        -> list[Reference]
-    extract_claims(doc, refs)      -> list[Claim]   re-exported from src.ingest.claims
-    is_malformed(reference)        -> bool
+    split_entries(references_text) -> list[str]      plain code, no model
+    extract_references(doc)        -> ExtractionResult(references, malformed_ref_ids)
+    extract_claims(doc, refs)      -> list[Claim]    re-exported from src.ingest.claims
 
 ``extract_claims`` is implemented in ``src.ingest.claims`` - plain regex, no model, no
 cache, no config - and re-exported here because the P2 card names the two extraction
@@ -35,14 +34,29 @@ it had to:
   they join with none: "attention-\\nbased" -> "attention-based". The printed hyphen is
   kept, because removing it would be normalising the title beyond whitespace.
 
-## malformed
+## malformed is a side-channel, NOT a derived predicate
 
 ``Reference`` forbids extra fields (B1, Tier 1, frozen), so there is nowhere on it to
-store a flag. The mechanism is a **derived predicate**: ``is_malformed(ref)`` is true
-exactly when ``ref.title is None``. Every printed reference has a title, and the prompt
-returns all-null only when it cannot read the entry, so a null title means extraction
-failed on that entry. P5 stamps ``Indicator.MALFORMED`` on exactly these; the entry is
-still in the list, still carries its ``raw_text``, and is never dropped.
+store a flag. ``extract_references`` therefore returns **two** things:
+
+    result = extract_references(doc)
+    result.references          # list[Reference], one per entry, never short
+    result.malformed_ref_ids   # frozenset[str], the ones extraction could not read
+
+It is a ``NamedTuple``, so ``refs, malformed = extract_references(doc)`` also works.
+
+The first version of this used ``is_malformed(ref) == (ref.title is None)`` and that was
+**wrong**, for a reason worth keeping written down: a reference that genuinely has no
+title - a standard, a dataset, a "personal communication" - is a perfectly good
+extraction, and the predicate could not tell it apart from a failure. Roy's corpus
+carries a genuine-unresolvable row to exercise that path, and stamping ``malformed`` on
+an ``injected: false`` entry costs a row of recall that presents as a P5 bug. See D-102.
+
+Membership of ``malformed_ref_ids`` comes from the **extraction attempt**: the entry is
+in the set when no reply validated against ``Reference`` after the configured retry. A
+well-formed reply whose ``title`` is null is NOT malformed. P5 stamps
+``Indicator.MALFORMED`` on exactly this set; the entry is still in ``references``, still
+carries its ``raw_text``, and is never dropped.
 
 **Extraction never drops an entry.** ``len(out) == len(entries)`` is asserted in code
 before returning, not just in a test.
@@ -65,7 +79,7 @@ import re
 import statistics
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from src import settings
 from src.contract import Reference
@@ -79,10 +93,10 @@ from src.ingest.pdf_parser import ParsedDocument
 # scripts/update_status.py looks for both here. The implementation stays in claims.py
 # because it shares nothing with the extractor: no model, no cache, no config.
 __all__ = [
+    "ExtractionResult",
     "ParsedDocument",
     "extract_claims",
     "extract_references",
-    "is_malformed",
     "marker_style",
     "ref_id_for",
     "split_entries",
@@ -397,14 +411,21 @@ def _malformed_reference(ref_id: str, raw_text: str) -> Reference:
     return Reference(ref_id=ref_id, raw_text=raw_text)
 
 
-def is_malformed(reference: Reference) -> bool:
-    """True for entries extraction could not read. P5 stamps ``malformed`` on these.
+class ExtractionResult(NamedTuple):
+    """What ``extract_references`` returns: every entry, plus which ones failed.
 
-    Derived rather than stored, because ``Reference`` forbids extra fields. Every
-    printed reference has a title, and the prompt is instructed to return all-null
-    rather than guess, so a null title is the signal.
+    A ``NamedTuple`` so both spellings work and neither is a trap::
+
+        result = extract_references(doc)          # result.references, result.malformed_ref_ids
+        references, malformed = extract_references(doc)
+
+    ``malformed_ref_ids`` is a ``frozenset`` because it is a membership test with no
+    meaningful order, and because a caller must not be able to mutate it into
+    disagreeing with ``references``.
     """
-    return reference.title is None
+
+    references: list[Reference]
+    malformed_ref_ids: frozenset[str]
 
 
 def _call_model(client: Any, entry: str, model: str, temperature: float, timeout: float) -> str:
@@ -421,7 +442,7 @@ def extract_references(
     doc: ParsedDocument,
     config: dict[str, Any] | None = None,
     client: Any = None,
-) -> list[Reference]:
+) -> ExtractionResult:
     """Split the references block, then extract each entry with one AIR call.
 
     One call per entry rather than one for the whole block: a single call over forty
@@ -434,7 +455,7 @@ def extract_references(
     """
     entries = split_entries(doc.references_text)
     if not entries:
-        return []
+        return ExtractionResult([], frozenset())
 
     config = config or settings.load_config()
     model = settings.model_for(_STAGE, config)
@@ -447,6 +468,7 @@ def extract_references(
     cache = _load_cache()
     total = len(entries)
     out: list[Reference] = []
+    malformed: set[str] = set()
 
     for position, entry in enumerate(entries, start=1):
         ref_id = ref_id_for(position, total)
@@ -478,7 +500,13 @@ def extract_references(
                         reference = None
                     continue
 
-        out.append(reference if reference is not None else _malformed_reference(ref_id, entry))
+        if reference is None:
+            # No reply validated after the configured retry. The entry still ships,
+            # with its printed text and nothing invented - and its id goes in the set,
+            # because that is the only place the failure is recorded.
+            reference = _malformed_reference(ref_id, entry)
+            malformed.add(ref_id)
+        out.append(reference)
 
     # Asserted in code, not only in a test: extraction never drops an entry.
     if len(out) != total:
@@ -486,4 +514,4 @@ def extract_references(
             f"extractor dropped entries: {len(out)} out for {total} in - this is a bug, "
             "not a data problem; every entry must come back, malformed if necessary"
         )
-    return out
+    return ExtractionResult(out, frozenset(malformed))

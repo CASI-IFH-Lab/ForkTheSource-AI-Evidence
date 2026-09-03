@@ -246,15 +246,16 @@ TWO_ENTRIES = "[1] A. Author. First title. Journal, 2021.\n[2] B. Writer. Second
 def test_every_entry_comes_back():
     doc = _tiny_doc(TWO_ENTRIES)
     client = StubClient()
-    refs = extractor.extract_references(doc, client=client)
+    refs, malformed = extractor.extract_references(doc, client=client)
     assert len(refs) == 2 == len(extractor.split_entries(doc.references_text))
     assert [r.ref_id for r in refs] == ["R01", "R02"]
+    assert malformed == frozenset()
     assert len(client.calls) == 2, "one call per entry, not one for the block"
 
 
 def test_forty_entries_yield_forty_references(sample_doc):
     client = StubClient()
-    refs = extractor.extract_references(sample_doc, client=client)
+    refs, _malformed = extractor.extract_references(sample_doc, client=client)
     assert len(refs) == SAMPLE_ENTRIES
     assert [r.ref_id for r in refs] == [f"R{n:02d}" for n in range(1, SAMPLE_ENTRIES + 1)]
 
@@ -262,7 +263,7 @@ def test_forty_entries_yield_forty_references(sample_doc):
 def test_raw_text_is_always_the_split_entry_not_the_model():
     doc = _tiny_doc(TWO_ENTRIES)
     entries = extractor.split_entries(doc.references_text)
-    refs = extractor.extract_references(doc, client=StubClient())
+    refs, _ = extractor.extract_references(doc, client=StubClient())
     assert [r.raw_text for r in refs] == entries
 
 
@@ -282,15 +283,15 @@ def test_raw_text_is_always_the_split_entry_not_the_model():
 def test_a_mangled_reply_yields_malformed_with_raw_text_preserved(bad_reply):
     doc = _tiny_doc(TWO_ENTRIES)
     client = StubClient(replies={"First title": bad_reply})
-    refs = extractor.extract_references(doc, client=client)
+    refs, malformed = extractor.extract_references(doc, client=client)
 
     assert len(refs) == 2, "a bad reply must never drop the entry"
     bad, good = refs[0], refs[1]
-    assert extractor.is_malformed(bad)
+    assert malformed == {"R01"}, "the failure is recorded in the side-channel"
     assert bad.ref_id == "R01"
     assert bad.raw_text.startswith("[1] A. Author.")
     assert bad.title is None and bad.authors == [] and bad.year is None
-    assert not extractor.is_malformed(good)
+    assert good.ref_id not in malformed
     # Retried once before giving up: config says max_retries 1.
     retries = settings.llm_settings()["max_retries"]
     assert sum(1 for c in client.calls if "First title" in c) == retries + 1
@@ -305,9 +306,9 @@ def test_a_raising_client_still_returns_every_entry():
             raise RuntimeError("gateway down")
 
     doc = _tiny_doc(TWO_ENTRIES)
-    refs = extractor.extract_references(doc, client=Dead())
+    refs, malformed = extractor.extract_references(doc, client=Dead())
     assert len(refs) == 2
-    assert all(extractor.is_malformed(r) for r in refs)
+    assert malformed == {"R01", "R02"}
     assert [r.raw_text[:7] for r in refs] == ["[1] A. ", "[2] B. "]
 
 
@@ -323,7 +324,7 @@ def test_fields_are_parsed_off_the_reply():
         }
     )
     doc = _tiny_doc(TWO_ENTRIES)
-    refs = extractor.extract_references(doc, client=StubClient(default=reply))
+    refs, _ = extractor.extract_references(doc, client=StubClient(default=reply))
     ref = refs[0]
     assert ref.title == "Layer normalization"
     assert ref.authors == ["Jimmy Lei Ba", "Jamie Ryan Kiros"]
@@ -336,15 +337,16 @@ def test_fields_are_parsed_off_the_reply():
 def test_a_fenced_reply_is_still_parsed():
     reply = '```json\n{"title": "T", "authors": [], "year": null, "doi": null, "arxiv_id": null, "venue": null}\n```'
     doc = _tiny_doc(TWO_ENTRIES)
-    refs = extractor.extract_references(doc, client=StubClient(default=reply))
+    refs, malformed = extractor.extract_references(doc, client=StubClient(default=reply))
     assert refs[0].title == "T"
-    assert not extractor.is_malformed(refs[0])
+    assert malformed == frozenset()
 
 
 def test_no_entries_means_no_calls_and_no_references():
     doc = _tiny_doc("")
     client = StubClient()
-    assert extractor.extract_references(doc, client=client) == []
+    references, malformed = extractor.extract_references(doc, client=client)
+    assert references == [] and malformed == frozenset()
     assert client.calls == []
 
 
@@ -355,10 +357,10 @@ def test_the_second_run_is_a_cache_hit_and_makes_no_calls():
     doc = _tiny_doc(TWO_ENTRIES)
     client = StubClient()
 
-    first = extractor.extract_references(doc, client=client)
+    first, _ = extractor.extract_references(doc, client=client)
     assert len(client.calls) == 2
 
-    second = extractor.extract_references(doc, client=client)
+    second, _ = extractor.extract_references(doc, client=client)
     assert len(client.calls) == 2, "the second run called the model again"
     assert [r.model_dump() for r in first] == [r.model_dump() for r in second]
     assert extractor.cache_path().exists()
@@ -369,8 +371,8 @@ def test_two_runs_produce_byte_identical_json():
     doc = _tiny_doc(TWO_ENTRIES)
     client = StubClient()
 
-    def dump(refs):
-        return json.dumps([r.model_dump() for r in refs], sort_keys=True, indent=2)
+    def dump(result):
+        return json.dumps([r.model_dump() for r in result.references], sort_keys=True, indent=2)
 
     assert dump(extractor.extract_references(doc, client=client)) == dump(
         extractor.extract_references(doc, client=client)
@@ -402,7 +404,7 @@ def test_every_cache_key_input_changes_the_key(kwargs):
 def test_a_corrupt_cache_file_is_a_miss_not_a_crash():
     extractor.cache_path().write_text("{ this is not json", encoding="utf-8")
     doc = _tiny_doc(TWO_ENTRIES)
-    refs = extractor.extract_references(doc, client=StubClient())
+    refs, _ = extractor.extract_references(doc, client=StubClient())
     assert len(refs) == 2
 
 
@@ -416,9 +418,9 @@ def test_a_stale_cached_reply_is_re_fetched():
     extractor.cache_path().write_text(json.dumps(poisoned), encoding="utf-8")
 
     calls_before = len(client.calls)
-    refs = extractor.extract_references(doc, client=client)
+    refs, malformed = extractor.extract_references(doc, client=client)
     assert len(client.calls) > calls_before, "a stale cached reply must be re-fetched"
-    assert all(not extractor.is_malformed(r) for r in refs)
+    assert malformed == frozenset()
 
 
 # ---------------------------------------------------------------------------
@@ -556,8 +558,9 @@ def test_live_smoke_one_entry_through_the_real_gateway(monkeypatch, tmp_path):
         "[2] Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. Neural machine translation "
         "by jointly learning to align and translate. CoRR, abs/1409.0473, 2014."
     )
-    refs = extractor.extract_references(doc)
+    refs, malformed = extractor.extract_references(doc)
     assert len(refs) == 2
+    assert malformed == frozenset(), f"live extraction failed on {sorted(malformed)}"
     assert refs[0].title is not None, f"live extraction returned nothing usable: {refs[0]}"
     # Both printed forms of an arXiv id must come back, per the prompt's rule 3.
     assert refs[0].arxiv_id == "1607.06450"
@@ -573,3 +576,73 @@ def test_both_extraction_entry_points_import_from_extractor():
     from src.ingest.extractor import extract_references  # noqa: F401
 
     assert reexported is claims_mod.extract_claims
+
+
+# ---------------------------------------------------------------------------
+# The reason malformed is a side-channel and not a predicate - D-102
+# ---------------------------------------------------------------------------
+def test_a_titleless_but_correctly_parsed_reference_is_NOT_malformed():
+    """The bug the side-channel exists to prevent.
+
+    A standard, a dataset, a "personal communication" genuinely has no title. That is a
+    successful extraction of a titleless work, not a failed extraction - and the old
+    ``is_malformed(ref) == (ref.title is None)`` predicate could not tell the two apart.
+    Roy's corpus carries a genuine-unresolvable row to exercise this path; stamping
+    ``malformed`` on an ``injected: false`` entry costs a row of recall that presents as
+    a P5 bug.
+    """
+    titleless = json.dumps(
+        {
+            "title": None,
+            "authors": ["International Organization for Standardization"],
+            "year": 2015,
+            "doi": None,
+            "arxiv_id": None,
+            "venue": "ISO 9001:2015",
+        }
+    )
+    doc = _tiny_doc(TWO_ENTRIES)
+    references, malformed = extractor.extract_references(
+        doc, client=StubClient(replies={"First title": titleless})
+    )
+
+    assert references[0].title is None, "the fixture is only meaningful with a null title"
+    assert references[0].authors == ["International Organization for Standardization"]
+    assert references[0].year == 2015
+    assert "R01" not in malformed, (
+        "a well-formed reply with a null title is a titleless work, not a failure"
+    )
+    assert malformed == frozenset()
+
+
+def test_malformed_is_reported_by_id_not_by_inspecting_fields():
+    """A malformed entry and a titleless one are indistinguishable by field, on purpose:
+    that is why the truth has to come from the extraction attempt."""
+    all_null = json.dumps(
+        {"title": None, "authors": [], "year": None, "doi": None, "arxiv_id": None, "venue": None}
+    )
+    doc = _tiny_doc(TWO_ENTRIES)
+    references, malformed = extractor.extract_references(
+        doc, client=StubClient(replies={"First title": all_null, "Second title": "garbage"})
+    )
+    parsed_as_empty, failed = references[0], references[1]
+    # Field-identical...
+    assert parsed_as_empty.title is None and failed.title is None
+    assert parsed_as_empty.authors == failed.authors == []
+    # ...and still correctly distinguished.
+    assert malformed == {"R02"}
+
+
+def test_the_result_is_tuple_compatible_and_named():
+    doc = _tiny_doc(TWO_ENTRIES)
+    result = extractor.extract_references(doc, client=StubClient())
+    references, malformed = result
+    assert result.references is references
+    assert result.malformed_ref_ids is malformed
+    assert isinstance(malformed, frozenset)
+
+
+def test_is_malformed_is_gone():
+    """Deleted rather than deprecated: a predicate that is wrong on real data should not
+    stay importable where P5 might reach for it. See D-102."""
+    assert not hasattr(extractor, "is_malformed")
