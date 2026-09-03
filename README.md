@@ -7,6 +7,15 @@ Drop in an academic PDF. The app pulls out every bibliography reference, normali
 each one into JSON (authors, year, title, venue, volume, issue, pages, identifiers)
 and shows them in a table.
 
+## Docs
+
+| Read this | When |
+|-----------|------|
+| [docs/setup.md](docs/setup.md) | Fresh machine. VPN, key, install, run. Start here. |
+| [docs/module_status.md](docs/module_status.md) | Before you branch anything. What is actually built, and what is safe to start. |
+| [docs/config_reference.md](docs/config_reference.md) | Every key in `config.yaml`, what reads it, what breaks without it. |
+| [docs/pipeline_stages.md](docs/pipeline_stages.md) | The seven stages, their signatures, and the injection seams. |
+
 ## Setup
 1. Get an AIR API key at https://voyager.rc.asu.edu (ASU VPN required)
 2. `python3 -m venv .venv && source .venv/bin/activate`
