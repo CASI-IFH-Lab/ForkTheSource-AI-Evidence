@@ -1,7 +1,7 @@
 # Module status — where the repo actually is
 
 Ground truth: [module_implementation_plan.pdf](module_implementation_plan.pdf), now in the
-repo. Verified against commit `04b8ffe` on `main`, with **B0, B2 and B3 merged**.
+repo. Verified against commit `b1d7f65` on `main`, with **B0, B1, B2 and B3 merged**.
 
 The plan says what should be built; this file says what *is* built. Where they differ, the
 **Actual** column is the one read off the working tree.
@@ -18,13 +18,13 @@ Owners and plan status are from the plan. Actual status is from the tree.
 | ID | Module | Owner | Queue # | **Actual status in this repo** | Where |
 |----|--------|-------|---------|-------------------------------|-------|
 | B0 | App skeleton | Ritik | 1 | **DONE — ON `main`.** Merged in PR #1 at `a579dab`. App starts, drop zone accepts a PDF, raw text renders. Self-merged without review — **D-021**. | `main` |
-| B1 | `src/contract.py` + fixtures | **Arsha** | 2 | **Not started. Critical path.** Does not exist and must not be created by anyone else. **No test asserts its absence** — that assertion was removed so creating the file does not turn the suite red (**D-006**). Also carries `src/priority.py` — **D-009**. | — |
+| B1 | `src/contract.py` + fixtures | **Arsha** | 2 | **DONE — ON `main`.** Merged in PR #6 at `b1d7f65`. `src/contract.py` (frozen at Sync 1), `src/priority.py` as tier-1 shared infra, and an 8-entry `ledger_fixture.json`. Adds **D-032**-**D-037**; resolves **D-009**. | `main` |
 | B2 | `config.yaml` + `src/settings.py` | Ritik | 3 | **DONE — ON `main`**, landed inside B0 and extended. See below. Critic keys dropped — **D-004**. | `main` |
 | B3 | Golden-label format + defect catalog | **Roy** | 4 | **DONE — ON `main`.** Merged in PR #2 at `04b8ffe`. Written by Ritik in Roy's absence; **Roy owns it from here.** Nine rulings — **D-011**-**D-019**; one open constraint on P5 — **D-020**. | `main` |
 | P1 | PDF intake & normalization | Ritik | 5 | **HALF DONE.** See the P1 section. | `src/ingest/pdf_parser.py` |
 | P2 | Reference extractor (LLM) | Ritik | 8 | **Not started. Blocked on B1.** | → `src/ingest/extractor.py`, `claims.py`, `prompts.py` |
 | P3 | Resolver cache layer (SQLite) | Ritik | 10 | **Not started.** Config keys now exist (`cache_ttl_hours`, `schema_version`). | → `src/resolvers/cache.py` |
-| P4 | Scholarly resolvers | Ritik | 12 | **Not started.** Config keys exist (`providers`, `timeout_seconds`). **`CROSSREF_MAILTO` now lives in `.env`, not `config.yaml` — D-007, IMPLEMENTED.** P4 **must call `settings.crossref_mailto()` before its first request and let it raise**: without a contact address Crossref demotes you out of the polite pool *silently* — slower answers and tighter rate limits, no error — so P4 looks like it has a performance problem rather than a config one. **Sync 1 gate.** | → `src/resolvers/{crossref,openalex,arxiv,resolver}.py` |
+| P4 | Scholarly resolvers | Ritik | 12 | **Not started.** Config keys exist (`providers`, `timeout_seconds`). **`CROSSREF_MAILTO` now lives in `.env`, not `config.yaml` — D-007, IMPLEMENTED.** P4 **must call `settings.crossref_mailto()` before its first request and let it raise**: without a contact address Crossref demotes you out of the polite pool *silently* — slower answers and tighter rate limits, no error — so P4 looks like it has a performance problem rather than a config one. **D-037: the waterfall MUST check for an arXiv ID or a `10.48550/` DOI prefix BEFORE Crossref and route those to the arXiv resolver, with OpenAlex as fallback — Crossref 404s the entire `10.48550/*` prefix (arXiv DOIs are DataCite-registered), and a Crossref 404 must never fall through to `unresolvable`, because that output is byte-identical to what D-018 assigns a HALLUCINATED reference.** Also sets `is_preprint` from provider-native flags per **D-036**, never from venue strings. **Sync 1 gate.** | → `src/resolvers/{crossref,openalex,arxiv,resolver}.py` |
 | P5 | Evidence builder + rule classifier | Ritik | 13 | **Not started.** All four thresholds now in config. | → `src/matching/{evidence,rules}.py` |
 | P6 | Pipeline orchestrator | Ritik | 14 | **Not started.** `src/pipeline.py` deliberately does not exist — reserved, and asserted absent by a test. | → `src/pipeline.py`, `scripts/run_pipeline.py` |
 | A1 | LLM judge agent (incl. the folded-in critic as `gate.py`) | **Arsha** | 6 | **Not started.** Unblocked by B1 + fixtures — no pipeline imports needed. `gate.py` is three code checks, not a model call — **D-004**, still open. `tests/test_layout.py` now permits intra-package and shared-infra imports — **D-008, CLOSED**; `src/judge/agent.py` importing `src/judge/prompts.py` and `src/llm` is verified green. | → `src/judge/{prompts,agent,gate,priority}.py` |
