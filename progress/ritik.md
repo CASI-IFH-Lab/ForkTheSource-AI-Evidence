@@ -57,3 +57,10 @@ tests: 162 passed
 publishes: scripts/update_status.py (STATUS.md generator; --check exits 1 if stale, --stdout prints), .githooks/{post-commit,post-merge}, scripts/install_hooks.sh, progress/<you>.md block format
 notes: STATUS.md is generated - never hand-edit it. Run `bash scripts/install_hooks.sh` once per clone. Guard fix in 4dcef20: the Action's recursion guard was skipping real pushes.
 next: P1, ETA 2:05
+
+## 2:00 — P1 MERGED
+branch: ritik/p1-intake -> main @ 6503b09
+tests: 189 passed
+publishes: parse_pdf(path, name=None) -> ParsedDocument(name: str, pages: list[str], tables: list, body_text: str, references_text: str, ref_start_page: int | None, notes: list[str]); ref_start_page is 1-BASED so pages[ref_start_page-1] is that page; run(pdf, config) now takes config as a REQUIRED positional
+notes: extract_pages/extract_text/locate_bibliography are internals now - import parse_pdf. Extraction passes x_tolerance_ratio=0.15 because pdfplumber's default glues words on both real papers. references_text carries a 26% appendix tail on sample.pdf - P2 must cut at the last entry marker. .gitignore's `data/` was swallowing tests/data fixtures; anchored to /data/.
+next: P2, ETA 3:00
