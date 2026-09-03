@@ -1,5 +1,7 @@
+streamlit
+pdfplumber
 openai
 python-dotenv
-requests
-pdfplumber
 pyyaml
+requests
+pytest

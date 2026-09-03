@@ -1,10 +1,14 @@
 models:
-  extractor:       llama4-scout-17b
-  judge:           TBD-reasoning-model
-  repro_extractor: llama4-scout-17b
-  repro_judge:     TBD-reasoning-model
-  critic:          TBD-different-family-model
+  extractor:        qwen3-30b-a3b-instruct-2507
+  judge:            qwen3-235b-a22b-thinking-2507
+  repro_extractor:  qwen3-30b-a3b-instruct-2507
+  repro_judge:      qwen3-235b-a22b-thinking-2507
+  critic:           gemma4-31b-it
 temperature: 0.1
+critic_temperature: 0.0
 resolvers:
   cache_dir: cache/
   timeout_seconds: 10
+banned_terms: [fake, fabricated, invented, nonexistent, fraud, plagiarism,
+               irreproducible, "not reproducible", sloppy, "AI-generated",
+               "AI-written"]
