@@ -70,10 +70,23 @@ def run_script(cwd: Path) -> subprocess.CompletedProcess:
     relative path sidesteps drive letters and separators entirely, and the script's own
     first act is `cd "$(dirname "$0")/.."`, which resolves correctly from `cwd`.
 
+    And it invokes BASH - the resolved absolute path from `shutil.which` above - not the
+    literal string "bash". On Windows, `CreateProcess` searches System32 BEFORE PATH, so
+    the literal launches System32's bash.exe, which is the **WSL** shim rather than the
+    Git-Bash that `shutil.which` already found. WSL's bash does not tolerate the CRLF
+    line endings that `core.autocrlf` leaves in the working tree, so the script died
+    with a syntax error on a carriage return - exit 2, from a guard that passes when run
+    directly. Diagnosed by Arsha on Windows; using the resolved path takes the six tests
+    from failing to passing.
+
+    (Paths and the offending token are described rather than quoted here: a Windows path
+    literal in a docstring is a nest of invalid escape sequences, which is its own
+    SyntaxWarning.)
+
     encoding is explicit because `text=True` alone decodes with the locale encoding.
     """
     return subprocess.run(
-        ["bash", SCRIPT_RELATIVE],
+        [BASH, SCRIPT_RELATIVE],
         capture_output=True,
         text=True,
         encoding="utf-8",

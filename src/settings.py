@@ -170,19 +170,30 @@ def priority_weights(config: dict[str, Any] | None = None) -> dict[str, Any]:
     than elsewhere in this module: a missing model name fails visibly on the next API
     call, whereas a wrong priority weight produces a plausible score that silently
     reorders the reviewer worklist, which is the one output a human actually reads.
+
+    Raises RuntimeError, not KeyError - D-038. A KeyError reads as a dict lookup that
+    went wrong inside the loader, which is the wrong mental model for "your config file
+    is incomplete"; the exception type is part of the message. This matches
+    src/priority.py::_load_priority_config() and crossref_mailto(), so config-absence
+    has one failure type across the repo. KeyError stays correct for a caller bug -
+    model_for("not-a-stage") asks for something that was never a config key.
     """
     block = _resolve(config).get("priority")
     if not isinstance(block, dict):
-        raise KeyError("'priority' is missing from config.yaml, or is not a mapping.")
+        raise RuntimeError(
+            "'priority' is missing from config.yaml, or is not a mapping. Priority "
+            "scoring has no defaults by design - see docs/decisions.md D-009 and D-038."
+        )
 
     missing = [key for key in PRIORITY_SCALARS if key not in block]
     if missing:
-        raise KeyError(
+        raise RuntimeError(
             "config.yaml is missing priority "
             + ("keys" if len(missing) > 1 else "key")
             + ": "
             + ", ".join(f"priority.{key}" for key in missing)
-            + ". Priority scoring has no defaults by design - see docs/decisions.md D-009."
+            + ". Priority scoring has no defaults by design - see docs/decisions.md "
+            "D-009 and D-038."
         )
 
     weights: dict[str, Any] = {

@@ -24,44 +24,54 @@ from a PR body, a card, a commit message or another doc.
 
 ## Open at Sync 1
 
-The whole agenda, and nothing else. **Three entries.** Everything else in this file is
-settled and only needs reading.
+The whole agenda, and nothing else. **Two entries.** Everything else in this file is settled
+and only needs reading.
 
 | ID | One line | Whose call | Why it cannot wait |
 |----|----------|-----------|--------------------|
 | **D-004** | Does `gate.py` want a model of its own? `models.critic` and `critic_temperature` were **removed** from `config.yaml`. | **Arsha** | If A1 wants an LLM in the gate, two config keys and a `config_reference.md` row come back — and the removal is currently pinned by a test. |
-| **D-020** | `version_mismatch` fires when **exactly one record is a preprint** — not on venue divergence, not on year alone. | **Ritik** (it constrains P5) | P5 is unwritten. Implemented any other way, three correctly-classified defects score as misses and recall fails the ≥ 19/21 target. |
-| **D-037**, routing only | The *finding* is settled — Crossref 404s every `10.48550/*` DOI. What is open is **how P4 resolves them**: a DataCite call, or arXiv-API routing. | **Ritik** (it constrains P4's waterfall) | P4 is unwritten and `resolvers.providers` is already `[crossref, openalex, arxiv]`. Chosen wrong, every arXiv-DOI reference in the corpus resolves to nothing and scores `unresolvable` against a label that says otherwise. |
+| **D-020**, P5 half only | The rule is settled and its **contract side is closed** (`resolved.is_preprint`, per D-036). What is open is **implementing** "exactly one side is a preprint" in `src/matching/`. | **Ritik** (it constrains P5 step 2) | P5 is unwritten. Implemented any other way — venue strings, or year alone — three correctly-classified defects score as misses and recall fails the ≥ 19/21 target. |
 
 **D-004 is NOT settled by B1.** B1 adds no model call anywhere and takes no position on
 whether `gate.py` wants one; that question belongs to A1 and stays Arsha's to bring to
-Sync 1. Nothing in D-032 to D-037 touches it.
+Sync 1. Nothing in D-032 to D-038 touches it.
 
 **Closed since this table was first written.** Three in the B1-unblock PR:
 
-- **D-006** — the contract-absence assertion is removed. B1's diff touches no test in
-  `tests/test_layout.py`, so Arsha's first commit leaves the suite green.
+- **D-006** — the contract-absence assertion is removed. B1's diff touched no test in
+  `tests/test_layout.py`, and Arsha's first commit left the suite green. Confirmed at the
+  B1 review: `test_layout.py` did not flag `src/contract.py` or `src/priority.py`.
 - **D-007** — `CROSSREF_MAILTO` is implemented: out of `config.yaml`, into `.env`, with a
   reader that raises on unset. No longer implementation debt.
 - **D-008** — `tests/test_layout.py` now encodes the three tiers as constants, permits
   intra-package and shared-infra imports, and enforces cross-lane isolation in **both**
-  directions.
+  directions. Confirmed at the B1 review: all 20 layout tests PASSED, none skipped, and
+  `src/priority.py` imports only `src.contract` and stdlib.
 
-And two more since:
+Two more with the B1 merge:
 
-- **D-009** — **resolved by D-032.** `src/priority.py` ships in the B1 PR as shared infra,
-  the formula is implemented, and the three previously un-named constants are named.
-- **D-032, part 2** — **DONE.** The four `priority.*` keys landed on `main` at **`78fbe95`**
-  with the names and values D-032 specified, alongside a `settings.priority_weights()`
-  accessor. **The default lookup path is live**: `compute_priority(ev, verdict, 3)` now
-  returns `0.9` with no `weights=` argument. Parts 1 and 3 of D-032 still stand — the
-  fail-closed ruling governs anyone who later removes a key.
+- **D-009** — **resolved by D-032.** `src/priority.py` ships as tier-1 shared infra, the
+  formula is implemented, and the previously un-named constants are named.
+- **D-032, part 2** — **DONE.** The four `priority.*` keys landed on `main` at **`78fbe95`**,
+  and B1's default lookup path went live: verified at review with `compute_priority` and no
+  `weights=` returning `1.0` / `0.0` / `0.18` on the three hand-checked cases.
+
+And three at the B1 review itself (`main` `b1d7f65`):
+
+- **D-020, contract side** — closed by D-036. `resolved.is_preprint` is the resolved-side
+  input. Only the P5 implementation remains, in the table above.
+- **D-036** — accepted, **reversing the reviewer's incoming ruling**. `ResolvedSource` keeps
+  `is_preprint` and `arxiv_id`; the reasoning and what changed my mind are in that entry's
+  addendum.
+- **D-037** — the routing is chosen: arXiv IDs and `10.48550/` DOIs go to the arXiv resolver
+  **before** Crossref, OpenAlex as fallback. Nothing in that entry is open now.
 
 ## Index
 
 | ID | Title |
 |----|-------|
-| D-037 | arXiv DOIs are DataCite-registered: Crossref 404s every `10.48550/*` |
+| D-038 | Config-absence failures raise `RuntimeError`, naming every missing key |
+| D-037 | arXiv DOIs are DataCite-registered: Crossref 404s every `10.48550/*` — **routing now chosen** |
 | D-036 | `ResolvedSource` carries `is_preprint` and `arxiv_id`; `venue` is not a preprint signal |
 | D-035 | `MatchEvidence` refuses a retracted source without the indicator, and both DOIs normalise identically |
 | D-034 | `doi_match` is tri-state: `None` means "no DOI to compare", not "the DOIs disagree" |
@@ -111,6 +121,62 @@ And two more since:
 > Every one of them constrains a module nobody has written yet, which is why they are here
 > rather than left as prose in the file that established them. That is the standing rule
 > working late rather than not at all.
+
+---
+
+## D-038 — Config-absence failures raise `RuntimeError`, naming every missing key
+
+**Date** 2026-09-03 (B1 review) · **Decided by** Ritik, **adopting Arsha's convention over
+his own** · **Status**: active
+
+**Affects**: every config reader, present and future. `src/settings.py`
+(`priority_weights()`), `src/priority.py` (`_load_priority_config()`),
+`tests/test_config.py`.
+
+**Decision**: When a config value a module requires is **absent**, the reader raises
+**`RuntimeError`** with a message that **names every missing key at once** and points at the
+decision that explains why there is no default. Not `KeyError`, and not the first missing key
+only.
+
+`settings.priority_weights()` raised `KeyError`; it now raises `RuntimeError`. One convention,
+and it is B1's, not B2's.
+
+**Why**: Arsha raised this in the B1 PR rather than silently switching to my accessor, and
+she was right on both counts — right not to switch, and right about which type is better.
+
+`KeyError` is the *mechanically* accurate exception: something looked up a key and it was not
+there. But it is the wrong thing to say to the person who has to act. A `KeyError` reads as a
+dict lookup that went wrong *inside the loader* — an internal bug, someone else's problem, a
+traceback to file. `RuntimeError("config.yaml is missing priority keys: …")` reads as what it
+is: your configuration is incomplete, here is the list, go edit the file. The exception type
+is part of the error message, and for a missing config value the honest message is about the
+config, not about a dict.
+
+The "every missing key at once" half matters more than the type. A reader that raises on the
+first absent key makes someone fix `config.yaml` four times, re-running the suite between
+each. Naming all four lets them make one edit. That is a small thing that compounds: the
+config layer is the first thing every new module touches.
+
+The rejected alternative was to standardise on `KeyError` — my direction, and the one that
+would have required **her** to change **her** code rather than me changing mine. Rejected
+because it is the worse message, and because `src/priority.py`'s fail-closed behaviour is
+pinned by `test_priority_config_is_either_complete_or_fails_closed`, which asserts
+`RuntimeError` deliberately per **D-032** part 3. Standardising the other way would have
+changed a tested failure mode in someone else's module to match an untested one in mine, on
+no argument except that mine was written first.
+
+Worth stating plainly, since this file is meant to record how decisions actually got made:
+**this is a reviewer adopting the reviewee's convention.** The whole point of asking her to
+raise disagreements rather than accommodate mine is that sometimes she is right, and a review
+that never changes the reviewer's code is not a review.
+
+**Consequence**: **Ritik** — `settings.priority_weights()` raises `RuntimeError`; done in the
+follow-up PR to the B1 merge, with its tests updated. **Everyone** — any future config reader
+(`P3`'s cache settings, `P4`'s provider config, whatever A1 adds) follows this: `RuntimeError`,
+every missing key named, and a pointer to the entry that explains the absence of a default.
+`settings.crossref_mailto()` (**D-007**) already did this and is the pattern to copy.
+`KeyError` remains correct for a genuine programming error — `model_for("not-a-stage")` asks
+for something that was never a config key, and that is a caller bug rather than a config gap.
 
 ---
 
@@ -167,10 +233,60 @@ written rather than after. **Nobody** treats a Crossref 404 as evidence a work d
 
 ---
 
+### ADDENDUM — the routing is now chosen. Ritik, at the B1 review, 2026-09-03.
+
+**Status of this entry is now: finding settled, routing settled. Nothing here is open.**
+
+**The ruling.** P4's waterfall checks for an **arXiv ID or a `10.48550/` DOI prefix BEFORE
+trying Crossref**, and routes those to the **arXiv resolver**, with **OpenAlex as the
+fallback**. Crossref keeps the first slot for **every other** DOI. A Crossref 404 on the
+`10.48550/` prefix is never reached, and is never treated as evidence a work does not exist.
+
+**Why this route and not the other two.** All three of the routes above work; the arXiv one
+is cheapest and lands two things at once.
+
+- The arXiv API is **already in `resolvers.providers`**, so this adds no HTTP client, no
+  dependency, and no fourth provider to configure, time out and cache.
+- Per **D-036**, the arXiv resolver sets `is_preprint=True` unconditionally. So the routing
+  fix and the preprint signal arrive together: the reference that Crossref could not return
+  at all becomes the reference that reliably reports its own publication stage. Routing to
+  DataCite would fix resolution while leaving `is_preprint` to be derived separately.
+- **OpenAlex is the fallback** rather than the primary because it resolves the same works
+  cleanly by DOI *and* carries the preprint flags (`version='submittedVersion'`,
+  `source.type='repository'`), so the degraded path still satisfies D-020 rather than
+  silently losing the signal.
+- **DataCite was rejected**, though it is the more correct answer in the abstract — it is the
+  actual registrar and returns `resourceTypeGeneral='Preprint'` directly. A whole extra
+  provider for one DOI prefix is not worth it when a provider already in the list resolves
+  the same works, and every new provider is another timeout, another cache key shape and
+  another thing to explain at Sync 1.
+
+**Why the cost of this ruling is zero today, which is the point.** This is a reorder inside
+a module nobody has written. At hour 6 the same finding would have arrived as a debugging
+session inside a lane that was already integrating, against a corpus whose labels were
+already committed. That asymmetry — free now, expensive later — is the whole argument for
+logging a constraint before the code exists.
+
+**What it prevents, restated because it is the worst failure in the vocabulary.** Without
+the reorder, a **correctly-cited arXiv preprint** resolves to `unresolvable` + `[]`, which is
+**byte-identical** to what **D-018** assigns a **hallucinated** reference. R2 would score a
+real preprint as a detected fabrication and recall would be wrong **in our favour** — a
+number that flatters the project for a bug, which is exactly the kind that collapses under
+the first informed question.
+
+**Consequence of the addendum**: **Ritik** — P4's waterfall is written this way, and
+`docs/module_status.md`'s P4 row carries the constraint. **Roy** — R1's corpus should include
+**at least one legitimately-cited arXiv preprint with a `10.48550` DOI, labelled
+`injected: false`**. Without such a row this failure mode is **unmeasurable**, and it is the
+one that would inflate our recall rather than depress it.
+
+---
+
 ## D-036 — `ResolvedSource` carries `is_preprint` and `arxiv_id`; `venue` is not a preprint signal
 
 **Date** 2026-09-03 (B1) · **Decided by** Arsha, on Ritik's question and live API evidence ·
-**Status**: active
+**Status**: active — **accepted at the B1 review, reversing the reviewer's incoming ruling**
+(see the addendum at the foot of this entry)
 
 **Affects**: **P4** (must set `is_preprint`), **P5** (implements D-020 with it), A1.
 `src/contract.py`, `docs/contract.md`. **Supersedes** the "Note for P5" paragraph in
@@ -267,6 +383,53 @@ both sides are `None`, the indicator does not fire; absence of evidence is not e
 version pair. **Arsha** — A1 must not read `is_preprint is None` as `False`. The B1 fixture
 sets it explicitly on both sides of R02 so the "exactly one" reading is demonstrated rather
 than described.
+
+
+### ADDENDUM — accepted at review, against the reviewer's own intended ruling. Ritik, 2026-09-03.
+
+Recorded because a reversal is the most useful thing this file can hold, and this one went
+against the person doing the reviewing.
+
+**I came into the B1 review intending to rule the opposite way**: keep `ResolvedSource`
+minimal, freeze it as the plan's page-3 block wrote it, and have P5 implement D-020 from
+`provider == "arxiv"` **or** a preprint-server venue string. The stated reasoning was that
+D-037 forces P4 to special-case the arXiv route anyway, so the resolver always knows when it
+resolved from arXiv, and `provider` therefore already carries the signal.
+
+**Two things in the evidence above defeat that, and the second is the one I had wrong.**
+
+**1. There is no usable venue half.** I was treating "a preprint-server venue string" as an
+available input. It is not: Crossref preprints return `container-title = []` or `None`, and
+for the version-pair case this indicator exists for, the resolved venue is the **conference
+name** (Crossref) or **`null`** (OpenAlex). A test that cannot fire on its own motivating
+case is not a test.
+
+**2. `provider == "arxiv"` covers a quarter of what D-020 claims.** This is the part my
+ruling got wrong rather than merely underweighted. `provider` only identifies works the
+**arXiv resolver** handled. A **bioRxiv** preprint comes back through **Crossref** as
+`type='posted-content'` — so `provider == "crossref"` while the record genuinely *is* a
+preprint, and the only thing that says so is the provider-native flag. D-020's own text names
+arXiv, bioRxiv, medRxiv and SSRN; a signal that works for one of the four is not enough.
+
+There is also a consistency argument I should have reached on my own: a venue **name** test
+is the same mistake D-020 itself reversed. That entry threw out venue-string *comparison*
+because venue is the least normalised field in a bibliography. Swapping it for matching one
+venue against a server-name list is the same fragility in different clothes.
+
+**And the timing settles the cost question.** Two optional fields with defaults, before the
+Sync 1 freeze, cost a declaration and two tests. The same two fields after the freeze cost a
+contract amendment, a fixture regeneration and a renegotiation with labels already written.
+The fields were added at the only cheap moment there was.
+
+**Consequence**: D-036 stands as written. **D-020's contract side is closed** by it — see
+that entry's addendum. **P4** sets `is_preprint` from the three provider rules in the table
+above, and leaves it `None` when a provider says nothing. **P5** implements D-020 from
+`is_preprint`, never from venue strings.
+
+**Housekeeping note for the PR body, not for this entry:** section (f) of PR #6 still reads
+*"Decision: leave the contract minimal, document as a P5 constraint. See ask 2"*, which
+commit `e98bfca` and this entry superseded. The decision log is correct; that paragraph is
+stale.
 
 ---
 
@@ -929,7 +1092,9 @@ multiple lanes whose reviewer has not started, and it is not a general licence t
 ## D-020 — `version_mismatch` fires on preprint-ness, not venue divergence
 
 **Date** 2026-09-03 · **Decided by** Ritik, **reversing his own earlier ruling**, on
-Claude's analysis · **Status**: **open** — constrains P5 step 2, which is unwritten. Sync 1.
+Claude's analysis · **Status**: **split** — the **contract side is CLOSED** (B1 review,
+see the addendum below); the **P5 side remains open** and constrains `src/matching/`,
+which is unwritten. Sync 1.
 
 **Affects**: P5 (`src/matching/evidence.py`, step 2), R1's labels `D07`-`D09` and `D20`-`D21`,
 R2's recall computation. `docs/defect_catalog.md` § 3, `eval/golden/FORMAT.md` § Rulings.
@@ -972,6 +1137,25 @@ of `needs_check` + `[]`, and because indicator matching is exact-set all three s
 misses on a correct classification — recall drops to 18/21 and fails the plan's ≥ 19/21
 target while the pipeline is behaving properly. On the Sync 1 agenda so this is implemented
 deliberately rather than discovered from a red eval run.
+
+
+### ADDENDUM — the contract side is closed. Ritik, at the B1 review, 2026-09-03.
+
+**The resolved-side input to this test is `ResolvedSource.is_preprint`, not a venue string
+and not `provider == "arxiv"`.** With **D-036** merged, both sides of "exactly one record is
+a preprint" have a real signal: `reference.arxiv_id` or a preprint venue on the citation
+side, `resolved.is_preprint` on the resolved side. The contract carries what the rule needs,
+and it is frozen that way.
+
+**Tri-state discipline is part of the closure.** `is_preprint is None` means *the provider
+did not say* and must never be read as `False`. If both sides are `None`, **the indicator
+does not fire** — absence of evidence is not evidence of a version pair. Reading `None` as
+`False` would turn "we could not tell" into "definitely the published version", which is
+precisely the assertion this entry exists to forbid.
+
+**What remains open is only the P5 implementation**: writing the "exactly one side" test in
+`src/matching/`. That is Ritik's and unwritten, and it is the single line still on the
+Sync 1 agenda from this entry.
 
 ---
 
