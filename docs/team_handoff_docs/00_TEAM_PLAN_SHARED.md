@@ -11,11 +11,16 @@ individual document. Then start.
 - Repo: `github.com/CASI-IFH-Lab/ForkTheSource-AI-Evidence` — `main` is demo-sacred, PR-only
 - Ground truth for module specs: `docs/module_implementation_plan.pdf` in the repo
 
-**Starting state (verified against the tree):** `main` @ `a4d57dd`, **131 tests green**,
-`check_secrets` PASS. Merged: B0 (app shell + intake half), B2 (config + settings), B3
-(golden-label format), B1 (contract + priority + 8-entry fixture). Open decisions: exactly
-two — D-004 (Arsha) and D-020's P5 half (Ritik) — both closed by tasks in the individual
-documents, so **there is no Sync 1 meeting**; the agenda became work items.
+**Current state (T0 of the compressed sprint):** `main` @ `02c3337`, **444 passed + 1
+skipped** (445 collected; the skip is a judge live test that stands down when the AIR
+gateway is unreachable), `check_secrets` PASS. Merged since the original handoff: S0
+(status tooling — STATUS.md self-regenerates; run `bash scripts/install_hooks.sh` once per
+clone), P1 (`parse_pdf`), P2 (AIR extractor), P3+P4 (cache + resolvers), **A1** (judge +
+gate), **A2** (dashboard) and **R1** (spiked corpus + golden labels). Arsha is on **A3,
+blocked on P6**; Roy has merged R1. Still unwritten: **P5**, **P6**, `wired_judge`.
+**The §6 timeline is SUPERSEDED by REPLAN_T_minus_2.md in this folder** — 2-hour Phase 1,
+4–5-hour Phase 2. Paste FOUR documents into your agent now: this one, your individual
+doc, the ADDENDUM, and the REPLAN.
 
 ---
 
@@ -201,6 +206,9 @@ merge.
 
 ## 6. Master timeline — Phase 1
 
+**SUPERSEDED — see REPLAN_T_minus_2.md.** Kept for the module descriptions the REPLAN
+references.
+
 All three lanes run simultaneously. **Nobody waits for anybody** until 4:00.
 
 | Clock | Ritik | Arsha | Roy |
@@ -234,19 +242,28 @@ is wrong, you wrap it — you do not change it.
 
 ```python
 # ---- Ritik publishes ----------------------------------------------------
-parse_pdf(path) -> ParsedDocument
+parse_pdf(path) -> ParsedDocument                                          # LIVE
     # ParsedDocument: {name, pages: list[str], tables: list, body_text,
     #                  references_text, ref_start_page, notes: list[str]}
     # Phase 1: tables is always []
 
-extract_references(doc: ParsedDocument) -> list[Reference]
-extract_claims(doc, refs) -> list[Claim]
+extract_references(doc: ParsedDocument) -> ExtractionResult                # LIVE
+    # ExtractionResult is a NamedTuple:
+    #     references: list[Reference]
+    #     malformed_ref_ids: frozenset[str]
+    # D-102 replaced the bare-list return. Unpacks as
+    #     refs, malformed = extract_references(doc)
+    # P5 stamps 'malformed' from malformed_ref_ids, NOT from title being None.
+extract_claims(doc, refs) -> list[Claim]                                   # LIVE
 
-make_key(url, params) -> str
-cache_get(key) -> dict | None
-cache_set(key, payload: dict) -> None
+make_key(url, params) -> str                                               # LIVE
+cache_get(key) -> dict | None                                              # LIVE
+cache_set(key, payload: dict) -> None                                      # LIVE
 
-resolve(ref: Reference) -> ResolvedSource | None
+resolve(ref: Reference) -> ResolvedSource | None                           # LIVE
+    # resolved.is_preprint tri-state live (D-036). OpenAlex preprint-signal
+    # promotion and raw['_lookup_branch'] land with P5 — do NOT depend on them
+    # until P5's MERGED block appears in progress/ritik.md.
 
 build_evidence(ref, resolved, ledger_refs: list[Reference]) -> MatchEvidence
 rule_based_status(ev: MatchEvidence) -> tuple[str, float, str]
@@ -295,6 +312,8 @@ src.llm:       get_client()
 `duplicate_entry`, `orphan`, `malformed`. Nobody adds a seventh of either. A reference
 whose extraction fails keeps its `raw_text` and gets `malformed` — extraction never drops
 an entry.
+
+Per **D-101**, `venue` is a noisy field on cold LLM runs — nothing may score or gate on it.
 
 **The language rule is absolute.** No output of this system — rationale, check, note, UI
 label, log line, README sentence — ever says a citation is fake, fabricated, invented,

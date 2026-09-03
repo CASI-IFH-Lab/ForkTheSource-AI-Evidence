@@ -2,6 +2,22 @@
 
 **Read `00_TEAM_PLAN_SHARED.md` first. This document assumes it.**
 
+> ## PROGRESS — where this lane actually is
+>
+> | Module | State | sha |
+> |---|---|---|
+> | **S0** status tooling | **MERGED** | `9b7af83` (+ `4dcef20`, `17e3945` fixes) |
+> | **P1** `parse_pdf` | **MERGED** | `6503b09` |
+> | **P2** AIR extractor | **MERGED** | `c9ab30b` (+ `e2e2ea7` re-export) |
+> | **P3+P4** cache + resolvers | **MERGED** | `339f9d1` |
+> | **P5** evidence + rules | **NEXT** | — |
+> | **P6** pipeline + ledger | after P5 | — |
+>
+> **The live P5 brief is authoritative over the P5 card below.** It adds three rulings
+> that came out of the P4 report: OpenAlex preprint-signal promotion, `raw['_lookup_branch']`
+> plus the title-search gate, and PMIDs staying in `raw`. Where the brief and the card
+> disagree, the brief wins.
+
 Paste both documents into your agent at session start. For each task say:
 *"Generate the prompt for P1 from my document, then execute it."*
 
