@@ -2217,3 +2217,46 @@ gateway flakiness the demo needs to know about).
 output means the VPN or the gateway, never the judge. Before the demo, run
 `pytest tests/test_judge.py::test_live_air_smoke -rs` and require **passed**, not skipped: a
 skip there is the rehearsal telling you the live beat will degrade on stage.
+
+---
+
+## D-204 — The seven progress-strip stage keys are the exact strings P6's callback must emit
+
+**Date** 2026-09-03 · **Decided by** Arsha (A2) · **Status**: active
+
+**Affects**: A2 `dashboard/theme.py` (`STAGES`), A3 `dashboard/app.py`, and **P6**
+`src/pipeline.py` — specifically the `progress: Callable[[stage_name, model_name], None]`
+argument in the frozen §7 contract.
+
+**Decision**: the progress strip is keyed on exactly these seven strings, in this order:
+
+```
+intake · extract · resolve · evidence · verdict · priority · ledger
+```
+
+`extract` and `verdict` are the two AIR stages and are the only two that pass a
+`model_name`; the other five pass `None`. A3 lights a chip by looking `stage_name` up in
+`theme.STAGE_KEYS`. A stage name that is not in that tuple lights nothing — the strip does
+not invent a chip for it, and it does not raise.
+
+**Why**: §7 froze the callback's *signature* and left its *vocabulary* open, and the two
+sides of that callback are being written by two people in two branches. The seven names
+come from the A2 brief, so this entry is not a new choice — it is the choice written down
+in the place P6's author will look, in the exact spelling the comparison uses. The failure
+this prevents is silent and late: P6 emits `"extraction"` where the strip expects
+`"extract"`, no exception is raised, and the demo's 0:20 beat — the one moment the AIR
+platform becomes visible — shows a strip that never lights. Rejected: matching loosely on
+prefixes or substrings, which would light `extract` for a stage called `extract_tables`
+and quietly make the strip wrong instead of empty.
+
+Note that `verdict`, not `judge`, is the KEY. The chip is *labelled* "judge" because that
+is what a reviewer understands; the key stays `verdict` because that is the pipeline stage
+and the contract's word. Label and key are separate fields in `theme.STAGES` for exactly
+this reason.
+
+**Consequence**: **Ritik** — P6 calls `progress(stage_name, model_name)` with one of those
+seven strings, spelled exactly, and passes the real model name on `extract` and `verdict`.
+`theme.STAGE_KEYS` is importable if you want to assert against it, though importing
+`dashboard` from `src/pipeline.py` would cross a lane boundary — copy the tuple into a
+test, or just read this entry. If you need an eighth stage, tell me and I will add the
+chip; do not rename an existing one.

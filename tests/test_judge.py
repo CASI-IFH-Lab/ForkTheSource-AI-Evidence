@@ -310,10 +310,20 @@ def test_a_gateway_error_falls_back_immediately(clean):
 
 
 def test_a_missing_api_key_falls_back_rather_than_raising(clean, monkeypatch):
-    """The offline demo path: no .env, no key, still thirty verdicts."""
+    """The offline demo path: no .env, no key, still thirty verdicts.
+
+    The patch target is ``src.llm.load_dotenv``, NOT ``dotenv.load_dotenv``.
+    ``src/llm.py`` does ``from dotenv import load_dotenv``, which binds the
+    function into that module's namespace at import time, so patching the
+    source module rebinds nothing the code under test will ever look at.
+    Patched at the wrong target, ``get_client()`` read ``.env`` straight back
+    off disk, built a real client, and this "offline" test made a live
+    gateway call — passing only on the runs where the gateway happened to be
+    down, which is how it survived until A2's merge.
+    """
     monkeypatch.delenv("AIR_API_KEY", raising=False)
     monkeypatch.delenv("AIR_BASE_URL", raising=False)
-    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    monkeypatch.setattr("src.llm.load_dotenv", lambda *a, **k: False)
     verdict = judge_reference(clean.reference, clean.evidence)
     assert verdict.judge_model == "fallback:stub"
 
