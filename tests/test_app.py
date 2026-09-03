@@ -9,7 +9,9 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 APP = Path(__file__).resolve().parents[1] / "app.py"
-SAMPLE = Path(__file__).parent / "data" / "sample.pdf"
+# The one-page hand-written fixture, not P1's real 15-page paper: this file tests the
+# app shell, and a 2 MB upload would make it slower without making it stricter.
+SAMPLE = Path(__file__).parent / "data" / "synthetic.pdf"
 
 
 def start_app() -> AppTest:
@@ -27,7 +29,7 @@ def test_app_starts_with_a_drop_zone():
 
 def test_dropping_a_pdf_renders_its_raw_text():
     app = start_app()
-    app.file_uploader[0].upload("sample.pdf", SAMPLE.read_bytes(), "application/pdf").run()
+    app.file_uploader[0].upload("synthetic.pdf", SAMPLE.read_bytes(), "application/pdf").run()
 
     assert not app.exception
     shown = app.text_area[0].value
@@ -37,7 +39,7 @@ def test_dropping_a_pdf_renders_its_raw_text():
 
 def test_page_count_is_reported():
     app = start_app()
-    app.file_uploader[0].upload("sample.pdf", SAMPLE.read_bytes(), "application/pdf").run()
+    app.file_uploader[0].upload("synthetic.pdf", SAMPLE.read_bytes(), "application/pdf").run()
 
     pages = [metric for metric in app.metric if metric.label == "Pages"]
     assert pages and pages[0].value == "1"
