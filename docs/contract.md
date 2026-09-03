@@ -7,6 +7,15 @@ type — see the module docstring for what's deliberately excluded and why
 (`ParsedDocument` → `src/ingest/`, matching thresholds → `config.yaml`,
 prompts → each lane's own `prompts.py`).
 
+> **The contract is `v0` and freezes as `v1` at Sync 1.** Until then a field
+> or a validator can still change with an entry in
+> [decisions.md](decisions.md). After Sync 1 the status vocabulary and the
+> indicator vocabulary are **closed lists** (D-005), and changing either
+> needs all three owners — the indicator set in particular, because D-024
+> compares indicator arrays as exact sets, so adding a seventh value
+> silently rewrites what every existing golden label means. P4 is the
+> merge-queue gate that enforces the freeze.
+
 ## Models
 
 **Reference** — one entry from a document's reference list, as intake
@@ -22,14 +31,33 @@ Written by `src/ingest/`.
 anthology, …) returned when a resolver looked a reference up. Written by
 `src/resolvers/`. `raw` keeps the provider's original payload for
 auditability; everything else is the fields the rest of the pipeline
-actually needs.
+actually needs. **Its `doi` is normalized by exactly the same rule as
+`Reference.doi`** — lowercased, `doi:`/`doi.org/` prefix stripped, trailing
+whitespace and punctuation stripped, `None` left as `None` — so that the two
+sides of a DOI comparison are like-for-like and a provider returning
+`https://doi.org/10.1/X` never reads as a mismatch against a citation
+printing `10.1/x` (**D-035**).
+
+> **Note for P5:** `ResolvedSource` has **no `arxiv_id` field**, while
+> `Reference` does. D-020 identifies a preprint by "a preprint-server venue
+> name **or** the presence of an arXiv ID", so on the *resolved* side only
+> the venue-name half of that test is available; an arXiv id that a provider
+> returns arrives inside `raw`. Deliberate — the contract stays minimal and
+> the field is addable later with an entry — but worth knowing before
+> writing the preprint check.
 
 **MatchEvidence** — the comparison between a `Reference` and its
 `ResolvedSource` (or the absence of one). Written by `src/matching/`.
 `indicators` is deduplicated on assignment, order preserved. If
 `resolved.is_retracted` is `True`, the `retracted` indicator must be
 present — that invariant is enforced in the model, not left to callers to
-remember.
+remember (**D-035**). **`doi_match` is tri-state and all three values
+matter**: `True` = both sides have a DOI and they agree, `False` = both have
+one and they **disagree**, `None` = **at least one side has no DOI, so no
+comparison happened**. `None` is not a synonym for `False`; reading it as
+one turns every legitimately DOI-less reference (books, theses, standards)
+into a `doi_mismatch` → `conflict`, which is a false accusation under D-019
+(**D-034**).
 
 **Verdict** — the judge's call on a reference: a status, a confidence, why,
 and up to three suggested checks for a human reviewer. Written by
@@ -47,7 +75,7 @@ by `src/pipeline.py`; read by `dashboard/`.
 | status | meaning |
 |---|---|
 | `verified` | Resolves to a record that matches the citation; nothing outstanding. |
-| `needs_check` | Resolves, but something about it (e.g. no in-text citation) needs a human look. |
+| `needs_check` | Resolves, but the evidence is ambiguous in a way only a human can settle (e.g. a duplicate pair with divergent metadata, where one copy is wrong and nothing says which). |
 | `conflict` | Resolves, but to something that contradicts the citation (wrong DOI, retracted, duplicate). |
 | `unresolvable` | No resolver returned a matching record, whether or not the citation itself parsed. |
 
@@ -68,7 +96,7 @@ guard against collapsing "why" into "what to do."
 |---|---|
 | `retracted` | The resolved source is marked retracted by its publisher. |
 | `version_mismatch` | The citation and the resolved source are different versions/stages of the same work (e.g. preprint vs. published). |
-| `doi_mismatch` | The printed DOI resolves to a record that doesn't match the citation's title/authors. |
+| `doi_mismatch` | The citation's printed DOI and the DOI of the work it names disagree (`doi_match` is `False`, never `None`). |
 | `duplicate_entry` | This entry's resolved source is also the resolved source of another entry, with conflicting metadata between them. |
 | `orphan` | The reference resolves cleanly but no claim in the document cites it. |
 | `malformed` | The citation text couldn't be parsed into a structured reference. |
@@ -88,10 +116,16 @@ severity(status)
 in `severity` raises `KeyError` — it never silently scores as 0.
 
 All five numbers are configuration, read from `config.yaml`'s `priority.*`
-block via `src.settings` (never inlined). Neither exists yet, so today
-`_load_priority_config()` raises `RuntimeError` naming the missing keys if
-called without `weights=`; every caller in this codebase (tests, the
-fixture generator) passes `weights=` explicitly. The expected block:
+block via `src.settings` (never inlined, no fallback — **D-032**).
+`priority.severity` is already on `main` from B2; the other four keys are
+**named by D-032 but not yet in `config.yaml`**, because that file is
+Ritik's. Until they land, `_load_priority_config()` raises a `RuntimeError`
+naming exactly the missing keys when called without `weights=`. That is
+deliberate rather than a gap to paper over: a wrong priority score is
+invisible — it only shows up as a mis-ordered worklist — so failing loudly
+beats scoring from stale constants. Every caller in this codebase (tests,
+the fixture generator) passes `weights=` explicitly, so nothing is blocked.
+The full block, once the four keys are added:
 
 ```yaml
 priority:
@@ -112,18 +146,45 @@ priority:
 through the real models and `compute_priority` (weights passed explicitly).
 Re-run it to regenerate the file — nothing in it is hand-typed.
 
-| ref | status | indicator | resolved? | scenario |
-|---|---|---|---|---|
-| R01 | verified | — | yes, no DOI | clean match via arXiv id |
-| R02 | verified | version_mismatch | yes | preprint cited, journal version resolved — must not be conflict |
-| R03 | conflict | doi_mismatch | yes | real title/authors, DOI belongs to a different record |
-| R04 | conflict | retracted | yes | resolves correctly but the source is retracted |
-| R05 | unresolvable | — | no | plausible entry, no record found |
-| R06 | unresolvable | malformed | no | unparseable "ibid." entry, raw_text preserved |
-| R07 | needs_check | orphan | yes | resolves perfectly, cited by no claim |
-| R08 | conflict | duplicate_entry | yes | same underlying DOI as R02, divergent printed year/venue |
+Every status/indicator pairing below matches the ruling that governs it in
+[decisions.md](decisions.md) and the mapping table in
+[defect_catalog.md](defect_catalog.md), so the fixture and the golden labels
+teach the same thing:
 
-Status counts: `{verified: 2, needs_check: 1, conflict: 3, unresolvable: 2}`.
+| ref | status | indicator | resolved? | scenario | ruling |
+|---|---|---|---|---|---|
+| R01 | verified | — | yes, no DOI | clean match via arXiv id | — |
+| R02 | verified | version_mismatch | yes | preprint cited, journal version resolved — must **not** be conflict | D-013, D-020 |
+| R03 | conflict | doi_mismatch | yes | title/authors identify the work; the printed DOI belongs to a different record, so `doi_match=False` | D-034 |
+| R04 | conflict | retracted | yes | resolves correctly but the source is retracted | catalog D16/D17 |
+| R05 | unresolvable | — | no | plausible entry, no record found | D-018 |
+| R06 | unresolvable | malformed | no | unparseable "ibid." entry, `raw_text` preserved | D-012 |
+| R07 | **verified** | orphan | yes | resolves perfectly, cited by no claim | **D-017** |
+| R08 | **needs_check** | duplicate_entry | yes | same underlying DOI as R02, divergent printed venue | **D-016** |
+
+Status counts: `{verified: 3, needs_check: 1, conflict: 2, unresolvable: 2}`.
 Evidence coverage: `0.75` (R05/R06 are the two unresolved entries — the
 fixture also asserts `resolved is None ⇔ status == unresolvable`). All six
 indicators appear exactly once.
+
+Two things about R07 and R08 that are easy to get backwards, which is why
+each is pinned by its own test:
+
+- **`orphan` is `verified`, not `needs_check`** (D-017). The indicator is
+  derived from the claim map, not from resolution — it says how the
+  bibliography is *used*, not whether the work exists. An uncited reference
+  that resolves cleanly is a sound citation with a note attached, and
+  putting it on the reviewer's worklist spends attention on the
+  lowest-value item in the file.
+- **`duplicate_entry` is `needs_check`, not `conflict`** (D-016). Divergent
+  metadata means at least one copy is wrong and the evidence does not say
+  which — exactly what `needs_check` describes. `conflict` would assert the
+  bibliography is definitely wrong and, at severity `1.0`, would crowd the
+  top of the worklist.
+
+**Known fixture simplification.** D-016 puts `duplicate_entry` on **both**
+rows of a duplicate pair, sharing one `defect_id`. Here only R08 carries it:
+R02 is the version-pair example, and a second indicator on it would blur the
+one row that exists to prove `version_mismatch` never means `conflict`.
+Doing both properly needs a ninth entry (D-023's "split the injection"
+rule). Roy's golden labels, not this fixture, are what R2 actually scores.

@@ -24,16 +24,20 @@ from a PR body, a card, a commit message or another doc.
 
 ## Open at Sync 1
 
-The whole agenda, and nothing else. **Three entries.** Everything else in this file is
-settled and only needs reading.
+The whole agenda, and nothing else. **Two entries**, plus one config key-name ratification
+carried over from B1. Everything else in this file is settled and only needs reading.
 
 | ID | One line | Whose call | Why it cannot wait |
 |----|----------|-----------|--------------------|
 | **D-004** | Does `gate.py` want a model of its own? `models.critic` and `critic_temperature` were **removed** from `config.yaml`. | **Arsha** | If A1 wants an LLM in the gate, two config keys and a `config_reference.md` row come back — and the removal is currently pinned by a test. |
-| **D-009** | The priority formula lives in `src/priority.py` as shared infra and ships with **B1**. | **Arsha** (it ships in her PR) | B1 is the critical path and this adds a file to it. Deciding it after B1 merges means a second PR touching the contract. Carries the three un-named formula constants with it. |
 | **D-020** | `version_mismatch` fires when **exactly one record is a preprint** — not on venue divergence, not on year alone. | **Ritik** (it constrains P5) | P5 is unwritten. Implemented any other way, three correctly-classified defects score as misses and recall fails the ≥ 19/21 target. |
+| **D-032**, part 2 only | The four `priority.*` key **names** are chosen and implemented; adding them to `config.yaml` needs Ritik, whose file it is. | **Ritik** (one four-line edit) | Until they land, `compute_priority()` fails closed unless `weights=` is passed. Nothing is blocked — every caller passes `weights=` — but the default path is dead code until it happens. |
 
-**Closed since this table was first written**, all three in the B1-unblock PR:
+**D-004 is NOT settled by B1.** B1 adds no model call anywhere and takes no position on
+whether `gate.py` wants one; that question belongs to A1 and stays Arsha's to bring to
+Sync 1. Nothing in D-032 to D-035 touches it.
+
+**Closed since this table was first written.** Three in the B1-unblock PR:
 
 - **D-006** — the contract-absence assertion is removed. B1's diff touches no test in
   `tests/test_layout.py`, so Arsha's first commit leaves the suite green.
@@ -43,10 +47,20 @@ settled and only needs reading.
   intra-package and shared-infra imports, and enforces cross-lane isolation in **both**
   directions.
 
+And one in **B1** itself:
+
+- **D-009** — **resolved by D-032.** `src/priority.py` ships in the B1 PR as shared infra,
+  the formula is implemented, and the three previously un-named constants are named. Only
+  the `config.yaml` edit remains, and it is Ritik's — see the D-032 row above.
+
 ## Index
 
 | ID | Title |
 |----|-------|
+| D-035 | `MatchEvidence` refuses a retracted source without the indicator, and both DOIs normalise identically |
+| D-034 | `doi_match` is tri-state: `None` means "no DOI to compare", not "the DOIs disagree" |
+| D-033 | `Indicator` is an enum, not `list[str]` — a typo is a load-time error |
+| D-032 | The priority formula, its five config keys, and why it fails closed — **resolves D-009** |
 | D-031 | `check_secrets.sh` reads the gateway host out of `.env.example` |
 | D-030 | `llm.timeout_seconds` is deliberately separate from `resolvers.timeout_seconds` |
 | D-029 | The confidence-band `thresholds` shape was rejected |
@@ -91,6 +105,237 @@ settled and only needs reading.
 > Every one of them constrains a module nobody has written yet, which is why they are here
 > rather than left as prose in the file that established them. That is the standing rule
 > working late rather than not at all.
+
+---
+
+## D-035 — `MatchEvidence` refuses a retracted source without the indicator, and both DOIs normalise identically
+
+**Date** 2026-09-03 (B1) · **Decided by** Arsha · **Status**: active
+
+**Affects**: **P4** (which builds `ResolvedSource`), **P5** (which builds `MatchEvidence`),
+A1. `src/contract.py`, `tests/test_contract.py`.
+
+**Decision**: Two model-level guarantees, both enforced in `src/contract.py` rather than
+left to callers.
+
+1. Constructing a `MatchEvidence` whose `resolved.is_retracted` is `True` **raises** unless
+   `retracted` is in `indicators`. There is no way to build the inconsistent object.
+2. `ResolvedSource.doi` is normalised by **exactly the same rule** as `Reference.doi` —
+   lowercased, `doi:`/`doi.org/` prefix stripped, trailing whitespace and punctuation
+   stripped, `None` left as `None`, and never invented.
+
+**Why**: Both are cases where the *obvious* implementation puts a false accusation one
+mistake away.
+
+On the first: a retraction is the single highest-severity signal in the system — D-032
+gives it a flat `+0.3` and it is the one thing that reliably lifts an entry into the
+reviewer's top-3. If P5 sets `is_retracted` and forgets the indicator, the entry resolves,
+looks ordinary, scores low and **sinks below correctly-cited references**. Nothing fails;
+the run is simply silently wrong in the one place it most matters, and the failure is
+invisible in every aggregate metric because the counts still sum. A validator turns that
+into a stack trace at the moment of construction, which is the cheapest possible place to
+find it. The rejected alternative was a lint or a gate check in A1: rejected because the
+object would already have been built, serialised and possibly scored by then, and because
+two lanes construct `MatchEvidence` independently — a guarantee that lives in the type
+holds for both without either having to remember it.
+
+On the second: P5 compares `Reference.doi` against `ResolvedSource.doi` to set `doi_match`.
+If only the citation side were normalised, a reference printing
+`https://doi.org/10.1/X` against a resolver returning `10.1/x` compares **unequal**, and
+the pipeline emits `doi_mismatch` → `conflict` on a **correctly-cited reference**. That is
+a false accusation under D-019 — release-blocking, on the clean control, caused entirely by
+string formatting. Crossref and OpenAlex genuinely differ in how they return DOIs (bare vs.
+resolver-URL form), so this is a live case, not a hypothetical. Normalising one side only
+is the natural thing to write, because `Reference.doi` is the field the brief talks about.
+
+**Consequence**: **Ritik** — P4 may return whatever form a provider gives; the model
+normalises it. P5 may compare `reference.doi == resolved.doi` directly and must not add its
+own normalisation step (that would be a second, drifting implementation — the D-008
+argument). P5 must set the `retracted` indicator whenever it sets `is_retracted`, or
+construction raises. **Arsha** — A1 may rely on a retracted entry always carrying the
+indicator. `tests/test_contract.py` pins both, including the four-case parametrised DOI test
+run against **both** models.
+
+---
+
+## D-034 — `doi_match` is tri-state: `None` means "no DOI to compare", not "the DOIs disagree"
+
+**Date** 2026-09-03 (B1) · **Decided by** Arsha · **Status**: active
+
+**Affects**: **P5** (`src/matching/evidence.py`), A1, R2's precision on `conflict`.
+`src/contract.py`, `docs/defect_catalog.md` § 1.
+
+**Decision**: `MatchEvidence.doi_match` is `bool | None`, and the three values are distinct
+and load-bearing:
+
+| value | meaning |
+|-------|---------|
+| `True` | both records carry a DOI and they agree |
+| `False` | both records carry a DOI and they **disagree** |
+| `None` | **at least one side has no DOI**, so no comparison was possible |
+
+`None` is not a default, not "unknown", and specifically **not** a synonym for `False`.
+
+**Why**: Collapsing `None` into `False` is the most natural simplification available here —
+`Optional[bool]` is awkward, and "not a match" reads like it covers both — and it converts
+**every DOI-less reference into a DOI mismatch**. DOI-less references are common and
+entirely legitimate: books, theses, standards, older papers, and by D-011's and D-015's
+explicit injection constraints they are exactly where the wrong-year and mangled-author
+defects live. Under the collapse, all of them acquire `doi_mismatch`, and `doi_mismatch` is
+the branch that maps to `conflict` — so a correctly-cited book becomes a `conflict` on the
+clean control, which is a release-blocking false accusation under D-019.
+
+The reverse collapse is just as bad in the other direction: treating a real disagreement as
+`None` because "we could not confirm it" hides D-01–D-03 entirely. `docs/defect_catalog.md`
+already names this as **the** likely swapped-DOI failure mode — *"`doi_match` is coming back
+`None` (treated as 'no DOI to compare') instead of `False`"* — so Roy's catalog is already
+written against this tri-state. Recording it here means P5 is built against the same reading
+rather than rediscovering it from a red eval run.
+
+The rejected alternative was a plain `bool` defaulting to `False`, which is what the field
+would be if nobody thought about it, plus a separate `has_doi` flag. Rejected because two
+fields that must be read together are a worse contract than one field with three values —
+the second field is the one someone forgets.
+
+**Consequence**: **Ritik**'s P5 sets `None` whenever either side lacks a DOI, and must not
+branch to `doi_mismatch` on `None`. **Arsha**'s A1 must not read `None` as evidence of
+anything. The B1 fixture models `False` on its `doi_mismatch` entry (R03) precisely so the
+distinction is demonstrated rather than described.
+
+---
+
+## D-033 — `Indicator` is an enum, not `list[str]` — a typo is a load-time error
+
+**Date** 2026-09-03 (B1) · **Decided by** Arsha · **Status**: active
+
+**Affects**: **P5** (emits indicators), A1, **R2** (compares them). `src/contract.py`,
+`eval/golden/FORMAT.md`.
+
+**Decision**: The six indicators are a `str`-valued `Enum`, and `MatchEvidence.indicators`
+is `list[Indicator]`, not `list[str]`. An unrecognised value raises `ValidationError` when
+the object is built or the ledger is loaded. Duplicates are collapsed on assignment, order
+preserved. `INDICATORS` is exported as a tuple of the string values for anyone who wants to
+iterate the vocabulary without importing the enum.
+
+**Why**: The vocabulary is **closed and frozen at Sync 1** (D-005), and D-024 compares
+indicator arrays as **exact sets**. Those two facts together mean a misspelling is not a
+cosmetic problem — it is a scoring failure. `version_mismatch` typed as `version-mismatch`
+or `versionmismatch` produces an indicator set that matches no label, so a **correctly
+classified** reference scores as a miss, and it does so with no error anywhere: the string
+is valid, the JSON is valid, the ledger loads, the counts sum. It surfaces as unexplained
+recall loss in R2, attributed to the classifier rather than to a keystroke — which is
+precisely the failure D-029 describes for the wrong config shape, arriving by a different
+route.
+
+Three lanes emit or read these strings independently, which is what makes a free `str`
+untenable: there is no single place a typo would be caught, and the value crosses a JSON
+boundary where any type information is lost. The enum puts the check at the boundary in both
+directions — construction *and* `load_ledger()` — so a hand-edited fixture or a
+hand-written label file fails loudly rather than scoring quietly.
+
+`use_enum_values=True` keeps the runtime and JSON representation a plain string, so this
+costs no ergonomics: `"orphan" in ev.indicators` works, and the serialised ledger is
+unchanged. The rejected alternative was `list[str]` plus a validator checking membership —
+functionally close, rejected because the enum is also the *documentation*: it gives the
+vocabulary one definition that IDEs complete and that `INDICATORS` is derived from, rather
+than a list that has to be kept in step with a docs table by hand.
+
+**Consequence**: **Ritik**'s P5 and **Arsha**'s A1 import `Indicator` rather than writing
+string literals. **Roy**'s R2 can trust that any ledger which loads has a valid indicator
+vocabulary, so an unmatched indicator is a real classification difference rather than a
+typo. Adding a seventh indicator changes this enum and needs all three owners (D-005).
+
+---
+
+## D-032 — The priority formula, its five config keys, and why it fails closed
+
+**Date** 2026-09-03 (B1) · **Decided by** Arsha · **Status**: active — **resolves D-009**
+
+**Affects**: **P6** and **A1** (both call it), B1. `src/priority.py`, `config.yaml`
+(`priority.*`), `src/settings.py`, `tests/test_layout.py` (`SHARED_INFRA`).
+
+**Decision**, in three parts.
+
+**1. `src/priority.py` is shared infrastructure and ships in the B1 PR.** This is D-009's
+question, and the answer is yes, as written. The reasoning that settles it is the **mutual
+independence** of the two callers: P6 imports it without importing `src/judge`, and A1
+imports it without importing `src/pipeline`. Neither lane has to exist for the other to
+call the formula. Had it lived in either lane, one lane would import the other's feature
+code — the single import direction the whole layout is built to prevent (D-008) — and A1
+(queue #6) would block on P6 (queue #14). A file both lanes call, that calls neither, is
+the definition of tier 1.
+
+**2. The formula, and the five numbers it reads.** Implemented exactly as:
+
+```
+severity(status)
+  * min(1.0, usage_base + usage_step * max(0, n_citing_claims))
+  * confidence
+  + (retracted_bonus if 'retracted' in ev.indicators else 0)
+```
+
+clamped to `[0, cap]`, rounded to 3dp. **All five come from `config.yaml` under
+`priority.*` — none is inlined.** `priority.severity` already exists (B2). The other four
+are the constants D-009 left un-named and `docs/pr/B0.md` flag 3 deferred; naming them was
+B1's to do, and the names are:
+
+| key | value | what it does |
+|-----|-------|--------------|
+| `priority.usage_base` | `0.4` | floor for a reference cited by zero claims |
+| `priority.usage_step` | `0.2` | added per citing claim, saturating at 3 claims |
+| `priority.retracted_bonus` | `0.3` | flat addition when `retracted` is present |
+| `priority.cap` | `1.0` | upper clamp |
+
+**They are not yet in `config.yaml`, because `config.yaml` is Ritik's file.** Adding those
+four lines is the only outstanding piece of D-009 and is on the Sync 1 list.
+
+**3. It fails closed.** With the keys absent, `compute_priority()` raises `RuntimeError`
+naming exactly which are missing. It does **not** fall back to the numbers in the table
+above, even though they are written down right here.
+
+**Why**: Parts 1 and 2 are covered above. Part 3 is the one worth arguing.
+
+A hardcoded fallback is the obvious kindness — the numbers are known, the formula would just
+work, and nobody is blocked. It is rejected because **priority is invisible when it is
+wrong.** Every other value in the ledger is checkable against something: a status has a
+label, an indicator has an exact-set comparison, a DOI either resolves or does not. A
+priority score is a float nobody can eyeball, and its only observable effect is the
+*ordering of the worklist* — which D-027 makes a demo beat and R2 asserts only indirectly.
+If code and config ever disagreed, the run would produce a plausible ordering derived from
+stale constants, and the first person to notice would be a reviewer wondering why a retracted
+paper was fourth. A loud failure at the moment of the first call costs one traceback; a quiet
+one costs the credibility of the thing the demo is built around.
+
+This also keeps faith with B2's own rule, which `src/settings.py` states in its docstring and
+implements with no `.get(key, fallback)` anywhere: *there are no defaults in code.* A
+fallback in `src/priority.py` would be the first exception to it, and exceptions to that rule
+are how a config layer stops being the source of truth.
+
+The cost is real and accepted: until the four keys land, the no-argument call path raises.
+It is survivable precisely because `weights=` exists — every caller in the tree passes the
+block explicitly, so B1 merges and unblocks A1, A2 and R2 with the formula fully exercised.
+
+**Consequence**: **Ritik** adds the four keys above to `config.yaml` (and a
+`docs/config_reference.md` row each), after which the default path goes live with no code
+change. **Ritik**'s P6 and **Arsha**'s A1 both call
+`compute_priority(ev, verdict, n_citing_claims)` and neither reimplements it; P6 must keep
+`verified` at severity `0.0` so D-027's version-pair assertion holds. **Nobody** adds a
+default to `src/priority.py`.
+
+`tests/test_contract.py::test_priority_config_is_either_complete_or_fails_closed` pins this
+**as a contract rather than as the current state of the file**, and passes in both states:
+with the four keys present it asserts the default path scores from config; with them absent
+it asserts the `RuntimeError` names exactly the missing keys and contains none of the
+formula's numbers, which is what would give away a hardcoded default. Which branch runs is
+read from `config.yaml` through `src.settings`, never assumed. **So adding the four keys
+does not turn the suite red** — the fail-closed branch simply stops being exercised, and
+nothing needs deleting or updating alongside the config edit.
+
+That is deliberate. An earlier draft of this test asserted the keys were *absent*, which
+would have gone red the moment Ritik made the change this entry asks him for — reading as
+"your config PR broke B1", inviting a revert of a correct change, and breaking the ground
+rule that the suite is green when a PR opens. A test that fails when someone does the right
+thing is a to-do list wearing a test's clothes, which is the trap **D-006** already names.
 
 ---
 
@@ -896,8 +1141,11 @@ read as a regression. **Roy**'s R4 README and `docs/setup.md` point only at
 
 ## D-009 — The priority formula lives in `src/priority.py`, shared infra, shipping with B1
 
-**Date** 2026-09-03 · **Decided by** Ritik · **Status**: **open** — Arsha's, since it ships
-with B1
+**Date** 2026-09-03 · **Decided by** Ritik · **Status**: **RESOLVED by D-032** (B1). The
+ruling below stands as written and was implemented unchanged; **D-032** adds the reasoning
+that settles it, names the three un-named constants, and records why the reader fails closed
+rather than defaulting. The only outstanding piece is the four-line `config.yaml` edit, which
+is Ritik's — see the *Open at Sync 1* table.
 
 **Affects**: B1, P6, A1. `src/priority.py` (does not exist yet), `src/pipeline.py`,
 `src/judge/priority.py`.

@@ -228,8 +228,16 @@ def _build_entries() -> list[LedgerEntry]:
     )
     entries.append(_entry(reference, evidence, verdict))
 
-    # R03 -- conflict, doi_mismatch: real title/authors, a DOI that resolves
-    # to an unrelated record.
+    # R03 -- conflict, doi_mismatch: real title/authors, a DOI belonging to a
+    # different record. Modelled the way docs/defect_catalog.md S1 describes
+    # the swapped-DOI defect: the resolver matches on title/author and finds
+    # the RIGHT paper, and the printed DOI is then compared against that
+    # record's DOI and disagrees -> doi_match=False. Deliberately not
+    # doi_match=True with a low title similarity: the catalog calls
+    # `conflict` reached via title mismatch "right answer, wrong reason",
+    # and doi_match=True beside a doi_mismatch indicator contradicts itself.
+    # False here also means "the DOIs disagree", which the tri-state keeps
+    # distinct from None = "no DOI to compare".
     reference = Reference(
         ref_id="R03",
         raw_text='He, K. et al. "Deep Residual Learning for Image Recognition." '
@@ -244,32 +252,35 @@ def _build_entries() -> list[LedgerEntry]:
     )
     resolved = ResolvedSource(
         provider="crossref",
-        title="Regularization Strategies for Sparse Linear Models",
-        authors=["A. Researcher", "B. Researcher"],
+        title="Deep Residual Learning for Image Recognition",
+        authors=reference.authors,
         year=2016,
         doi="10.1109/CVPR.2016.90",
-        venue="a different venue",
+        venue="CVPR 2016",
         url="https://doi.org/10.1109/cvpr.2016.90",
-        raw={"note": "record returned by the printed DOI"},
+        raw={"note": "record matched on title/author, not on the printed DOI"},
     )
     evidence = MatchEvidence(
         ref_id="R03",
         resolved=resolved,
-        title_similarity=0.15,
-        author_overlap=0.0,
+        title_similarity=1.0,
+        author_overlap=1.0,
         year_delta=0,
-        doi_match=True,
+        doi_match=False,
         indicators=[Indicator.DOI_MISMATCH],
-        notes=["The printed DOI resolves to a record whose title and authors do not match this citation."],
+        notes=[
+            "Title, authors and year identify this work unambiguously, but "
+            "the printed DOI is not the DOI of that work."
+        ],
     )
     verdict = Verdict(
         ref_id="R03",
         status=VerdictStatus.CONFLICT,
         confidence=0.85,
         rationale=(
-            "The cited DOI resolves to a record whose title and author "
-            "list do not match the citation; the bibliographic identity is "
-            "internally inconsistent."
+            "The work itself is identified confidently by title and "
+            "authors, but the printed DOI belongs to a different record, so "
+            "the two identifiers in this citation disagree."
         ),
         checks=[
             "Verify the DOI against the publisher's page for the cited title.",
@@ -387,8 +398,11 @@ def _build_entries() -> list[LedgerEntry]:
     )
     entries.append(_entry(reference, evidence, verdict))
 
-    # R07 -- needs_check, orphan: resolves perfectly but is not cited by any
-    # claim.
+    # R07 -- verified, orphan: resolves perfectly but is not cited by any
+    # claim. verified rather than needs_check per D-017: `orphan` is derived
+    # from the claim map, not from resolution, so it says how the
+    # bibliography is used, not whether the cited work exists. An uncited
+    # reference that resolves cleanly IS verified.
     reference = Reference(
         ref_id="R07",
         raw_text='Goodfellow, I. et al. "Generative Adversarial Networks." NeurIPS, 2014.',
@@ -419,20 +433,30 @@ def _build_entries() -> list[LedgerEntry]:
     )
     verdict = Verdict(
         ref_id="R07",
-        status=VerdictStatus.NEEDS_CHECK,
-        confidence=0.7,
+        status=VerdictStatus.VERIFIED,
+        confidence=0.9,
         rationale=(
-            "This reference-list entry has no corresponding in-text "
-            "citation; needs a human check to confirm whether it belongs "
-            "in the reference list."
+            "The citation is sound - title, authors and year all match the "
+            "resolved record. The note is only that no claim in the document "
+            "points at it."
         ),
         checks=["Search the document text for an uncaptured citation to this reference."],
         judge_model=JUDGE_MODEL,
     )
     entries.append(_entry(reference, evidence, verdict))
 
-    # R08 -- conflict, duplicate_entry: same underlying DOI as R02, but a
-    # divergent printed year and venue.
+    # R08 -- needs_check, duplicate_entry: same underlying DOI as R02, but a
+    # divergent printed venue. needs_check rather than conflict per D-016:
+    # divergent metadata means at least one copy is wrong and nothing in the
+    # evidence says which, which is exactly what needs_check describes.
+    #
+    # KNOWN FIXTURE SIMPLIFICATION: D-016 puts `duplicate_entry` on BOTH rows
+    # of a duplicate pair, sharing one defect_id. Here only R08 carries it,
+    # because R02 is the version-pair example and giving it a second
+    # indicator would blur the one row that exists to prove
+    # version_mismatch never means conflict. A fixture that did both
+    # properly would need a ninth entry - D-023's "split the injection"
+    # rule. Roy's labels, not this fixture, are what R2 scores.
     reference = Reference(
         ref_id="R08",
         raw_text='Devlin, J. et al. "BERT: Pre-training of Deep Bidirectional '
@@ -470,9 +494,14 @@ def _build_entries() -> list[LedgerEntry]:
     )
     verdict = Verdict(
         ref_id="R08",
-        status=VerdictStatus.CONFLICT,
+        status=VerdictStatus.NEEDS_CHECK,
         confidence=0.8,
-        rationale="Two separate reference-list entries resolve to the same DOI with inconsistent venue metadata between them.",
+        rationale=(
+            "Two reference-list entries resolve to the same DOI with "
+            "inconsistent printed venue metadata. At least one of the two "
+            "is wrong and the evidence does not say which, so a human "
+            "should decide."
+        ),
         checks=["Determine whether this is a duplicate reference-list entry or two distinct citations wrongly sharing a DOI."],
         judge_model=JUDGE_MODEL,
     )

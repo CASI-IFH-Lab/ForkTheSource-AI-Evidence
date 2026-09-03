@@ -191,32 +191,34 @@
     },
     {
       "evidence": {
-        "author_overlap": 0.0,
-        "doi_match": true,
+        "author_overlap": 1.0,
+        "doi_match": false,
         "indicators": [
           "doi_mismatch"
         ],
         "notes": [
-          "The printed DOI resolves to a record whose title and authors do not match this citation."
+          "Title, authors and year identify this work unambiguously, but the printed DOI is not the DOI of that work."
         ],
         "ref_id": "R03",
         "resolved": {
           "authors": [
-            "A. Researcher",
-            "B. Researcher"
+            "Kaiming He",
+            "Xiangyu Zhang",
+            "Shaoqing Ren",
+            "Jian Sun"
           ],
           "doi": "10.1109/cvpr.2016.90",
           "is_retracted": false,
           "provider": "crossref",
           "raw": {
-            "note": "record returned by the printed DOI"
+            "note": "record matched on title/author, not on the printed DOI"
           },
-          "title": "Regularization Strategies for Sparse Linear Models",
+          "title": "Deep Residual Learning for Image Recognition",
           "url": "https://doi.org/10.1109/cvpr.2016.90",
-          "venue": "a different venue",
+          "venue": "CVPR 2016",
           "year": 2016
         },
-        "title_similarity": 0.15,
+        "title_similarity": 1.0,
         "year_delta": 0
       },
       "priority": 0.51,
@@ -245,7 +247,7 @@
         ],
         "confidence": 0.85,
         "judge_model": "stub-judge-v0",
-        "rationale": "The cited DOI resolves to a record whose title and author list do not match the citation; the bibliographic identity is internally inconsistent.",
+        "rationale": "The work itself is identified confidently by title and authors, but the printed DOI belongs to a different record, so the two identifiers in this citation disagree.",
         "ref_id": "R03",
         "status": "conflict"
       }
@@ -425,7 +427,7 @@
         "title_similarity": 1.0,
         "year_delta": 0
       },
-      "priority": 0.168,
+      "priority": 0.0,
       "reference": {
         "arxiv_id": "1406.2661",
         "authors": [
@@ -446,11 +448,11 @@
         "checks": [
           "Search the document text for an uncaptured citation to this reference."
         ],
-        "confidence": 0.7,
+        "confidence": 0.9,
         "judge_model": "stub-judge-v0",
-        "rationale": "This reference-list entry has no corresponding in-text citation; needs a human check to confirm whether it belongs in the reference list.",
+        "rationale": "The citation is sound - title, authors and year all match the resolved record. The note is only that no claim in the document points at it.",
         "ref_id": "R07",
-        "status": "needs_check"
+        "status": "verified"
       }
     },
     {
@@ -485,7 +487,7 @@
         "title_similarity": 1.0,
         "year_delta": 0
       },
-      "priority": 0.48,
+      "priority": 0.288,
       "reference": {
         "arxiv_id": null,
         "authors": [
@@ -510,9 +512,9 @@
         ],
         "confidence": 0.8,
         "judge_model": "stub-judge-v0",
-        "rationale": "Two separate reference-list entries resolve to the same DOI with inconsistent venue metadata between them.",
+        "rationale": "Two reference-list entries resolve to the same DOI with inconsistent printed venue metadata. At least one of the two is wrong and the evidence does not say which, so a human should decide.",
         "ref_id": "R08",
-        "status": "conflict"
+        "status": "needs_check"
       }
     }
   ]

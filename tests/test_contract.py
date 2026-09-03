@@ -7,13 +7,12 @@ pydantic models, the committed fixture, and in-memory data.
 from __future__ import annotations
 
 import importlib.util
-import json
-import sys
-import types
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+
+from src import settings
 
 from src.contract import (
     INDICATORS,
@@ -30,22 +29,17 @@ from src.contract import (
     load_ledger,
     save_ledger,
 )
-from src.priority import compute_priority
+from src.priority import _SCALAR_KEYS, _SEVERITY_KEYS, compute_priority
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 FIXTURE_PATH = FIXTURES_DIR / "ledger_fixture.json"
 
-BANNED_TERMS = (
-    "fake",
-    "fabricated",
-    "invented",
-    "nonexistent",
-    "fraud",
-    "plagiarism",
-    "irreproducible",
-    "sloppy",
-    "ai-generated",
-)
+# Read from config.yaml rather than kept as a private copy: D-019 puts this
+# exact scan in A1's gate.py and R2's release gate, and a second hardcoded
+# list would drift from the one those two read. config.yaml currently
+# carries 11 terms, including "not reproducible" and "AI-written", which an
+# inlined list written against the B1 brief would have missed.
+BANNED_TERMS = tuple(term.lower() for term in settings.banned_terms())
 
 WEIGHTS = {
     "severity": {
@@ -131,9 +125,9 @@ def test_fixture_loads_and_validates(fixture_ledger):
 
 def test_fixture_status_counts_match_definition_of_done(fixture_ledger):
     assert fixture_ledger.summary_counts() == {
-        "verified": 2,
+        "verified": 3,
         "needs_check": 1,
-        "conflict": 3,
+        "conflict": 2,
         "unresolvable": 2,
     }
     assert fixture_ledger.counts_are_consistent()
@@ -165,6 +159,55 @@ def test_version_mismatch_is_never_conflict(fixture_ledger):
     for entry in matches:
         assert entry.verdict.status != "conflict"
         assert entry.verdict.status == "verified"
+
+
+def test_orphan_is_verified_not_needs_check(fixture_ledger):
+    """D-017: orphan is derived from the claim map, not from resolution.
+
+    An uncited reference that resolves cleanly is verified. Pinned because
+    needs_check is the intuitive-but-wrong answer, and it would put the
+    lowest-value item in the file on the reviewer's worklist.
+    """
+    matches = [e for e in fixture_ledger.entries if "orphan" in e.evidence.indicators]
+    assert matches, "no entry carries the orphan indicator"
+    for entry in matches:
+        assert entry.verdict.status == "verified", (
+            f"{entry.reference.ref_id}: orphan must be verified per D-017, "
+            f"got {entry.verdict.status!r}"
+        )
+        assert entry.evidence.resolved is not None
+
+
+def test_duplicate_entry_is_needs_check_not_conflict(fixture_ledger):
+    """D-016: divergent metadata means one copy is wrong and nothing says which.
+
+    conflict would assert the bibliography is definitely wrong; it also
+    carries severity 1.0 and would crowd the worklist.
+    """
+    matches = [
+        e for e in fixture_ledger.entries if "duplicate_entry" in e.evidence.indicators
+    ]
+    assert matches, "no entry carries the duplicate_entry indicator"
+    for entry in matches:
+        assert entry.verdict.status == "needs_check", (
+            f"{entry.reference.ref_id}: duplicate_entry must be needs_check per "
+            f"D-016, got {entry.verdict.status!r}"
+        )
+
+
+def test_doi_mismatch_records_doi_match_false_not_none(fixture_ledger):
+    """The tri-state must distinguish "DOIs disagree" from "no DOI to compare".
+
+    docs/defect_catalog.md names doi_match coming back None instead of False
+    as the likely swapped-DOI failure, so the fixture models False.
+    """
+    matches = [e for e in fixture_ledger.entries if "doi_mismatch" in e.evidence.indicators]
+    assert matches, "no entry carries the doi_mismatch indicator"
+    for entry in matches:
+        assert entry.evidence.doi_match is False, (
+            f"{entry.reference.ref_id}: doi_match must be False, not "
+            f"{entry.evidence.doi_match!r}"
+        )
 
 
 def test_malformed_entry_keeps_raw_text(fixture_ledger):
@@ -251,6 +294,40 @@ def test_doi_normalization_on_assignment():
 def test_doi_none_stays_none():
     ref = Reference(ref_id="R01", raw_text="text")
     assert ref.doi is None
+
+
+@pytest.mark.parametrize(
+    "raw_doi",
+    [
+        "10.1/X",
+        "https://doi.org/10.1/x",
+        "doi:10.1/x",
+        " 10.1/x ;",
+    ],
+)
+def test_resolved_source_doi_normalizes_identically_to_reference(raw_doi):
+    """Both sides of a DOI comparison must be normalized the same way.
+
+    P5 compares Reference.doi against ResolvedSource.doi to set doi_match.
+    If only one side were normalized, a citation printing
+    "https://doi.org/10.1/X" against a resolver returning "10.1/x" would
+    compare unequal and raise a spurious doi_mismatch -> conflict, which is
+    a false accusation on a correctly-cited reference.
+    """
+    resolved = ResolvedSource(provider="crossref", doi=raw_doi, raw={})
+    reference = Reference(ref_id="R01", raw_text="text", doi=raw_doi)
+    assert resolved.doi == "10.1/x"
+    assert resolved.doi == reference.doi
+
+
+def test_resolved_source_doi_normalizes_on_assignment():
+    resolved = ResolvedSource(provider="crossref", raw={})
+    resolved.doi = " 10.1/X ;"
+    assert resolved.doi == "10.1/x"
+
+
+def test_resolved_source_doi_none_stays_none():
+    assert ResolvedSource(provider="crossref", raw={}).doi is None
 
 
 def test_retracted_source_without_indicator_raises():
@@ -434,50 +511,106 @@ def test_priority_unknown_status_raises_key_error():
 
 
 # --------------------------------------------------------------------------
-# _load_priority_config fail-closed behavior (no config.yaml/src.settings
-# exist yet -- see src/priority.py's docstring)
+# _load_priority_config reads the REAL config.yaml through src.settings.
+#
+# config.yaml's priority block currently carries `severity` and nothing else:
+# usage_base, usage_step, retracted_bonus and cap are absent (D-009,
+# docs/pr/B0.md flag 3). Naming them is B1's, but config.yaml is Ritik's
+# file, so until they land the default path must fail closed rather than
+# invent numbers. These tests pin that, and pin the success path against an
+# injected complete block so the reader is proven to work the day it lands.
 # --------------------------------------------------------------------------
 
 
-def test_load_priority_config_missing_module_raises_runtime_error(monkeypatch):
-    monkeypatch.delitem(sys.modules, "src.settings", raising=False)
-    verdict = _minimal_verdict(status=VerdictStatus.CONFLICT, confidence=0.5)
+def test_priority_config_is_either_complete_or_fails_closed():
+    """Asserts the contract, not the current contents of config.yaml.
+
+    config.yaml is Ritik's file, and D-032 part 2 asks him to add four keys
+    to it. A test that pins the keys as *absent* would go red the moment he
+    does that -- reading as "your config PR broke B1", inviting a revert of
+    a correct change, and breaking the ground rule that the suite is green
+    when a PR opens. So this asserts both legitimate states and rejects only
+    the dangerous one:
+
+      keys present -> the default path works, scoring from config
+      keys absent  -> RuntimeError naming exactly the missing keys, and
+                      naming none of the formula's numbers, which would mean
+                      a hardcoded default had crept into src/priority.py
+
+    The state this rejects is "keys absent but a score comes back anyway" --
+    a silent default. Which branch runs is discovered from config.yaml
+    through src.settings, never assumed.
+    """
+    block = settings.load_config().get("priority") or {}
+    severity = block.get("severity") or {}
+
+    missing = [f"severity.{k}" for k in _SEVERITY_KEYS if k not in severity]
+    missing += [k for k in _SCALAR_KEYS if k not in block]
+
     ev = _minimal_evidence()
+    verdict = _minimal_verdict(status=VerdictStatus.CONFLICT, confidence=0.9)
+
+    if not missing:
+        # Complete. severity.conflict 1.0 x usage saturated at 3 claims
+        # (0.4 + 0.2*3 -> capped 1.0) x confidence 0.9 = 0.9, per D-032.
+        assert compute_priority(ev, verdict, 3) == 0.9, (
+            "the default path must score from config.yaml: with D-032's values "
+            "(severity.conflict 1.0, usage_base 0.4, usage_step 0.2, cap 1.0) a "
+            "conflict at confidence 0.9 cited by 3 claims scores 0.9"
+        )
+        return
+
     with pytest.raises(RuntimeError) as exc_info:
-        compute_priority(ev, verdict, 1)
+        compute_priority(ev, verdict, 3)
     message = str(exc_info.value)
-    assert "severity.conflict" in message
-    assert "usage_base" in message
+
+    # Split on the sentence terminator, not on "." -- a missing severity key
+    # is itself dotted ("severity.conflict") and would be truncated.
+    clause = message.split("keys: ", 1)[1].split(". Priority scoring", 1)[0]
+    named = [key.strip() for key in clause.split(",")]
+    assert sorted(named) == sorted(missing), (
+        f"the error must name exactly the missing keys.\n"
+        f"  missing in config.yaml: {sorted(missing)}\n"
+        f"  named in the error    : {sorted(named)}"
+    )
+    for number in ("0.4", "0.2", "0.3"):
+        assert number not in message, (
+            f"{number!r} appears in the fail-closed error -- a hardcoded default "
+            "may have crept into src/priority.py. D-032: no defaults, ever."
+        )
 
 
-def test_load_priority_config_partial_block_names_missing_keys(monkeypatch):
-    fake_settings = types.ModuleType("src.settings")
-    fake_settings.CONFIG = {
-        "priority": {
-            "severity": {"conflict": 1.0, "needs_check": 0.6, "unresolvable": 0.5, "verified": 0.0},
-            "usage_base": 0.4,
-        }
-    }
-    monkeypatch.setitem(sys.modules, "src.settings", fake_settings)
+def test_load_priority_config_names_only_the_keys_that_are_missing(monkeypatch):
+    partial = {"priority": {"severity": WEIGHTS["severity"], "usage_base": 0.4}}
+    monkeypatch.setattr(settings, "load_config", lambda *a, **k: partial)
 
     verdict = _minimal_verdict(status=VerdictStatus.CONFLICT, confidence=0.5)
-    ev = _minimal_evidence()
     with pytest.raises(RuntimeError) as exc_info:
-        compute_priority(ev, verdict, 1)
+        compute_priority(_minimal_evidence(), verdict, 1)
     message = str(exc_info.value)
-    assert "usage_step" in message
-    assert "retracted_bonus" in message
-    assert "cap" in message
-    assert "usage_base" not in message  # already present in the fake config
+    missing_clause = message.split("config.yaml is missing priority config keys: ")[1]
+    assert "usage_step" in missing_clause
+    assert "retracted_bonus" in missing_clause
+    assert "cap" in missing_clause
+    assert "usage_base" not in missing_clause  # present, so not reported
 
 
-def test_load_priority_config_success_matches_explicit_weights(monkeypatch):
-    fake_settings = types.ModuleType("src.settings")
-    fake_settings.CONFIG = {"priority": WEIGHTS}
-    monkeypatch.setitem(sys.modules, "src.settings", fake_settings)
+def test_load_priority_config_matches_explicit_weights_when_block_is_complete(monkeypatch):
+    complete = {"priority": dict(WEIGHTS)}
+    monkeypatch.setattr(settings, "load_config", lambda *a, **k: complete)
 
     verdict = _minimal_verdict(status=VerdictStatus.CONFLICT, confidence=0.5)
     ev = _minimal_evidence()
-    via_settings = compute_priority(ev, verdict, 1)
-    via_explicit_weights = compute_priority(ev, verdict, 1, weights=WEIGHTS)
-    assert via_settings == via_explicit_weights
+    assert compute_priority(ev, verdict, 1) == compute_priority(
+        ev, verdict, 1, weights=WEIGHTS
+    )
+
+
+def test_load_priority_config_uses_severity_from_config_not_a_default(monkeypatch):
+    """A retuned severity must actually change the score."""
+    retuned = {"priority": {**WEIGHTS, "severity": {**WEIGHTS["severity"], "conflict": 0.5}}}
+    monkeypatch.setattr(settings, "load_config", lambda *a, **k: retuned)
+
+    verdict = _minimal_verdict(status=VerdictStatus.CONFLICT, confidence=1.0)
+    ev = _minimal_evidence()
+    assert compute_priority(ev, verdict, 3) == 0.5

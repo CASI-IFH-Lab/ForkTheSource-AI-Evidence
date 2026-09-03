@@ -9,14 +9,18 @@ touching this module. Callers that already have the block in hand (tests,
 the fixture generator) pass it directly via ``weights=`` instead of relying
 on the default lookup.
 
-As of this module's introduction, neither ``src/settings.py`` nor
-``config.yaml``'s ``priority`` block exist yet - both are out of scope here.
-``_load_priority_config`` is written to fail closed rather than guess: a
-missing module or a missing key raises ``RuntimeError`` naming exactly what
-is absent, never a silent fallback to hardcoded numbers. Every caller in
-this codebase currently passes ``weights=`` explicitly; the default lookup
-becomes live the day something adds the config block and the settings
-loader.
+``config.yaml``'s ``priority`` block currently defines ``severity`` and
+nothing else: ``usage_base``, ``usage_step``, ``retracted_bonus`` and ``cap``
+are absent, exactly as D-009 and ``docs/pr/B0.md`` flag 3 record. Naming
+those four is B1's to do (D-009), but ``config.yaml`` is Ritik's file, so
+they are proposed in ``docs/decisions.md`` D-032 and land in a follow-up.
+
+Until they do, ``_load_priority_config`` fails closed rather than guessing:
+it names the missing keys in a ``RuntimeError`` and never falls back to a
+hardcoded number. A wrong-but-plausible priority score is worse than no
+score, because it silently reorders the reviewer worklist. Every caller in
+this codebase passes ``weights=`` explicitly, so nothing is blocked by the
+gap; the default lookup goes live the day the four keys land.
 
 This module imports only from ``src.contract`` - never ``src.judge`` or
 ``src.pipeline`` - to stay a leaf in the dependency graph.
@@ -30,47 +34,48 @@ from src.contract import Indicator, MatchEvidence, Verdict
 
 _SEVERITY_KEYS = ("conflict", "needs_check", "unresolvable", "verified")
 _SCALAR_KEYS = ("usage_base", "usage_step", "retracted_bonus", "cap")
-_REQUIRED_KEYS = tuple(f"severity.{key}" for key in _SEVERITY_KEYS) + _SCALAR_KEYS
 
 
 def _load_priority_config() -> Mapping:
+    """Read the whole ``priority.*`` block through ``src.settings``.
+
+    One accessor, not a shape probe: ``settings.load_config()`` is the only
+    thing in this repo that opens ``config.yaml`` (B2), and
+    ``settings.priority_severity()`` is the typed reader for the severity
+    map, so severity inherits that function's validation and float coercion
+    rather than being re-parsed here. Both take the already-loaded config, so
+    the file is read once.
+
+    Fails closed: any absent key raises ``RuntimeError`` naming exactly the
+    keys that are missing. There is deliberately no default for any of the
+    five numbers - see this module's docstring and D-009.
+    """
+    from src import settings
+
+    config = settings.load_config()
+
     try:
-        from src import settings  # lazy: may not exist yet
-    except ImportError as exc:
-        raise RuntimeError(
-            "src.settings is not available; cannot load priority config "
-            "keys: " + ", ".join(_REQUIRED_KEYS)
-        ) from exc
+        severity = settings.priority_severity(config)
+    except KeyError:
+        severity = {}
 
-    config = getattr(settings, "CONFIG", None)
-    if config is None:
-        get_config = getattr(settings, "get_config", None)
-        if get_config is not None:
-            config = get_config()
+    block = config.get("priority")
+    if not isinstance(block, Mapping):
+        block = {}
 
-    if not isinstance(config, Mapping):
-        raise RuntimeError(
-            "src.settings has no usable CONFIG/get_config() to load "
-            "priority config keys: " + ", ".join(_REQUIRED_KEYS)
-        )
-
-    block = config.get("priority", {})
-    severity = block.get("severity", {}) if isinstance(block, Mapping) else {}
-
-    missing = []
-    for key in _SEVERITY_KEYS:
-        if not isinstance(severity, Mapping) or key not in severity:
-            missing.append(f"severity.{key}")
-    for key in _SCALAR_KEYS:
-        if not isinstance(block, Mapping) or key not in block:
-            missing.append(key)
+    missing = [f"severity.{key}" for key in _SEVERITY_KEYS if key not in severity]
+    missing += [key for key in _SCALAR_KEYS if key not in block]
 
     if missing:
         raise RuntimeError(
-            "config.yaml is missing priority config keys: " + ", ".join(missing)
+            "config.yaml is missing priority config keys: "
+            + ", ".join(missing)
+            + ". Priority scoring has no defaults by design (D-009): a plausible "
+            "wrong score silently reorders the reviewer worklist. Pass weights= "
+            "explicitly, or add the keys to config.yaml."
         )
 
-    return block
+    return {**block, "severity": severity}
 
 
 def compute_priority(
