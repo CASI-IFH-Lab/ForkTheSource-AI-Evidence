@@ -128,6 +128,80 @@ def test_priority_severity_covers_all_four_statuses():
     }
 
 
+def test_priority_weights_match_the_plan():
+    """All five priority numbers, from the plan's P6 step 2. Pinned like the thresholds.
+
+    Retuning any of them changes the reviewer worklist ordering, which is what R2's
+    worklist assertions (D-027) and the demo's top-3 beat both depend on.
+    """
+    weights = settings.priority_weights()
+    assert weights["usage_base"] == 0.4
+    assert weights["usage_step"] == 0.2
+    assert weights["retracted_bonus"] == 0.3
+    assert weights["cap"] == 1.0
+    assert weights["severity"] == {
+        "conflict": 1.0,
+        "needs_check": 0.6,
+        "unresolvable": 0.5,
+        "verified": 0.0,
+    }
+
+
+@pytest.mark.parametrize("key", settings.PRIORITY_SCALARS)
+def test_priority_weights_raise_on_a_missing_scalar(key: str):
+    """No defaults. A missing weight raises and the message names the key.
+
+    D-009: a plausible wrong priority score is worse than none, because its only
+    observable effect is the ordering of the worklist and nobody can eyeball a float.
+    """
+    config = settings.load_config()
+    del config["priority"][key]
+    with pytest.raises(KeyError, match=key):
+        settings.priority_weights(config)
+
+
+def test_priority_weights_names_every_missing_key_at_once():
+    """A caller fixing config.yaml wants the whole list, not the first offender."""
+    config = settings.load_config()
+    for key in settings.PRIORITY_SCALARS:
+        del config["priority"][key]
+    with pytest.raises(KeyError) as excinfo:
+        settings.priority_weights(config)
+    for key in settings.PRIORITY_SCALARS:
+        assert key in str(excinfo.value)
+
+
+def test_priority_weights_raise_when_the_whole_block_is_gone():
+    config = settings.load_config()
+    del config["priority"]
+    with pytest.raises(KeyError, match="priority"):
+        settings.priority_weights(config)
+
+
+def test_b1s_priority_call_path_sees_all_five_keys():
+    """B1's src/priority.py reads the block directly - do not break its call path.
+
+    src/priority.py::_load_priority_config() calls settings.load_config() and
+    settings.priority_severity(config), then reads the four scalars straight off
+    config["priority"]. This test is that call path, so a refactor of src/settings.py
+    that moved the scalars behind an accessor would fail here rather than in B1.
+    """
+    config = settings.load_config()
+    severity = settings.priority_severity(config)
+    block = config["priority"]
+
+    missing = [f"severity.{k}" for k in ("conflict", "needs_check", "unresolvable", "verified")
+               if k not in severity]
+    missing += [k for k in settings.PRIORITY_SCALARS if k not in block]
+    assert missing == [], f"B1's priority lookup would fail closed on: {missing}"
+
+
+def test_priority_severity_still_accepts_a_preloaded_config():
+    """priority_severity(config) is B1's call signature. It keeps working unchanged."""
+    config = settings.load_config()
+    assert settings.priority_severity(config) == settings.priority_severity()
+
+
 def test_cache_schema_version_is_set():
     assert settings.cache_settings()["schema_version"] == 1
 

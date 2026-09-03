@@ -28,7 +28,7 @@ and shows them in a table.
 ## Setup
 1. Get an AIR API key at https://voyager.rc.asu.edu (ASU VPN required)
 2. `python3 -m venv .venv && source .venv/bin/activate`
-3. `pip install -r requirements.txt`
+3. `pip install -r requirements-dev.txt`  (app deps + pytest; `requirements.txt` alone is app-only)
 4. `cp .env.example .env` -> paste your OWN key into `.env`
 
 Never commit `.env`. Keys are personal - each teammate creates their own.

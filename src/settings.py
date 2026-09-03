@@ -153,6 +153,45 @@ def priority_severity(config: dict[str, Any] | None = None) -> dict[str, float]:
     return {str(status): float(weight) for status, weight in severity.items()}
 
 
+# The four scalar weights in the priority formula, alongside `severity`. Plan-sourced
+# (P6 step 2); see docs/decisions.md D-009 and D-032.
+PRIORITY_SCALARS = ("usage_base", "usage_step", "retracted_bonus", "cap")
+
+
+def priority_weights(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The whole `priority:` block, validated: `severity` plus the four scalars.
+
+    Companion to priority_severity(), not a replacement for it. `severity` is delegated
+    to that function so the map keeps one definition of its validation and float
+    coercion, and existing callers of priority_severity() are unaffected.
+
+    No defaults, and the message names every missing key at once rather than the first
+    one - a caller fixing config.yaml wants the whole list. Raising matters more here
+    than elsewhere in this module: a missing model name fails visibly on the next API
+    call, whereas a wrong priority weight produces a plausible score that silently
+    reorders the reviewer worklist, which is the one output a human actually reads.
+    """
+    block = _resolve(config).get("priority")
+    if not isinstance(block, dict):
+        raise KeyError("'priority' is missing from config.yaml, or is not a mapping.")
+
+    missing = [key for key in PRIORITY_SCALARS if key not in block]
+    if missing:
+        raise KeyError(
+            "config.yaml is missing priority "
+            + ("keys" if len(missing) > 1 else "key")
+            + ": "
+            + ", ".join(f"priority.{key}" for key in missing)
+            + ". Priority scoring has no defaults by design - see docs/decisions.md D-009."
+        )
+
+    weights: dict[str, Any] = {
+        key: float(block[key]) for key in PRIORITY_SCALARS
+    }
+    weights["severity"] = priority_severity(config)
+    return weights
+
+
 def cache_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Cache-wide settings. schema_version is bumped to invalidate stored payloads."""
     settings = _resolve(config).get("cache")
