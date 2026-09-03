@@ -78,13 +78,13 @@ rows from, and the one to read on stage.
 
 | defect_id | Defect type | Paper | ref_id | expected_status | expected_indicators |
 |---|---|---|---|---|---|
-| `D01` | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
+| `D01` | Swapped DOI | paper1 | R11 | `conflict` | `[doi_mismatch]` |
 | `D02` | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
 | `D03` | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
-| `D04` | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
+| `D04` | Hallucinated reference | paper1 | R21 | `unresolvable` | `[]` |
 | `D05` | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
 | `D06` | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
-| `D07` | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[]` |
+| `D07` | Wrong year (±2-3) | paper1 | R06 | `needs_check` | `[]` |
 | `D08` | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[]` |
 | `D09` | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[]` |
 | `D10` | Mangled author list | TBD | TBD | `needs_check` | `[]` |
@@ -93,13 +93,13 @@ rows from, and the one to read on stage.
 | `D12` | Duplicate entry — second copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
 | `D13` | Duplicate entry — first copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
 | `D13` | Duplicate entry — second copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
-| `D14` | Orphan citation | TBD | TBD | `verified` | `[orphan]` |
+| `D14` | Orphan citation | paper1 | R28 | `verified` | `[orphan]` |
 | `D15` | Orphan citation | TBD | TBD | `verified` | `[orphan]` |
-| `D16` | Retracted paper | TBD | TBD | `conflict` | `[retracted]` |
+| `D16` | Retracted paper | paper1 | R23 | `conflict` | `[retracted]` |
 | `D17` | Retracted paper | TBD | TBD | `conflict` | `[retracted]` |
 | `D18` | Malformed entry (severe variant) | TBD | TBD | `unresolvable` | `[malformed]` |
 | `D19` | Malformed entry (severe variant) | TBD | TBD | `unresolvable` | `[malformed]` |
-| `D20` | Preprint/journal version pair | TBD | TBD | `verified` | `[version_mismatch]` |
+| `D20` | Preprint/journal version pair | paper1 | R24 | `verified` | `[version_mismatch]` |
 | `D21` | Preprint/journal version pair | TBD | TBD | `verified` | `[version_mismatch]` |
 
 **23 rows, 21 distinct `defect_id`s.** `D12` and `D13` each occupy two rows — one injection,
@@ -577,7 +577,50 @@ Fill at R1. Recorded here so a future reader does not mistake them for unexplain
 
 | Paper | ref_id | Why it cannot resolve |
 |---|---|---|
-| TBD | TBD | TBD |
+| paper1 | R02 | Kolmogorov, *Entropy per unit time as a metric invariant of automorphisms*, Doklady 124 (1959) 754–755. No DOI, no arXiv ID, pre-DOI Soviet proceedings. OpenAlex title search returns **count 0**; Crossref's best bibliographic hit is a different 1967 PNAS paper at similarity 0.714, below `title_strong`. Checked 2026-09-03. |
+| paper1 | R30 | Körner, *Coding of an information source having ambiguous alphabet and the entropy of graphs*, 6th Prague Conference (1971) 411–425. No DOI, no arXiv ID. OpenAlex **count 0**; Crossref's best hit 0.506, below `title_weak`. The printed entry carries only a Google Scholar URL. Checked 2026-09-03. |
+| control | R02 | `COMSOL AB. 2024. COMSOL Multiphysics. https://www.comsol.com/` — a software product cited by vendor URL. No DOI, no arXiv ID, and no registry record for the product itself; the nearest OpenAlex hit is a different work, *Introduction to COMSOL Multiphysics*, at 0.704. Checked 2026-09-03. |
+| control | R29 | `SolidWorks Corp. 2005. Solidworks.` — a software product with no identifier, no venue and no URL. Nearest hits are books *about* SolidWorks (best 0.625, below `title_weak`). Checked 2026-09-03. |
+
+**These are `injected: false` with `expected_status: unresolvable`.** Per D-019 they are
+neither a false accusation nor a false alarm — they are the honest correct answer, and
+`FORMAT.md`'s documented exception covers them. paper1's two are what make precision on
+`unresolvable` measurable against `D04`: three `unresolvable` rows in that file, one
+injected and two not.
+
+### A naturally-occurring duplicate pair in the control
+
+`control` R17 and R18 are **the same work cited twice** — Burnett et al., *Decoherence
+benchmarking of superconducting qubits*, npj Quantum Information 5, 1 (2019), 54 — with
+divergent metadata: R17 prints the full date and `https://doi.org/10.1038/s41534-019-0168-5`,
+R18 prints neither. This is in the original bibliography; nothing was injected.
+
+Both rows are therefore labelled **`needs_check` + `[duplicate_entry]`, `injected: false`**,
+which is what D-016 says a correct pipeline produces for divergent duplicates and what the
+identical normalised titles will match on. The consequence to know before reading a metrics
+table: **the clean control carries two expected `needs_check` rows**, so a correct run
+reports two false alarms on it rather than zero. That is non-blocking under D-019 — the
+release gate fires on `conflict`, not on `needs_check` — but it means "false alarms: 2" on
+the control is the *passing* number, not a regression.
+
+### The D-037 tripwire row
+
+`paper1` **R19** — Mao, Mohri, Zhong, *Cross-entropy loss functions: theoretical analysis
+and applications*, `arXiv:2304.07288 (2023). doi:10.48550/arXiv.2304.07288.` — is
+`injected: false`, `verified` + `[]`, and it is in the corpus **on purpose**: it is a
+legitimately-cited arXiv preprint printing a `10.48550/` DOI, which D-037's addendum
+requires so that the failure mode it describes is measurable.
+
+If P4's waterfall ever regresses to Crossref-first, this row returns `unresolvable` + `[]`
+— byte-identical to what D-018 assigns `D04` — and recall would be wrong **in our favour**.
+The harness catches it as a false detection on a clean row instead. R18 and R20 are two
+further `10.48550` rows, so the tripwire does not rest on a single reference.
+
+Verified 2026-09-03: OpenAlex returns `type: preprint` for that DOI with every location on
+arXiv at `version: submittedVersion` and no journal record, so both sides of D-020's
+"exactly one record is a preprint" test read preprint and `version_mismatch` correctly does
+**not** fire. That is what makes `[]` the right indicator set here rather than
+`[version_mismatch]`.
 
 ### Retracted DOIs used, and when their flag was verified
 
@@ -585,7 +628,19 @@ Fill at R1, before writing the labels for rows 18-19.
 
 | ref_id | DOI | OpenAlex `is_retracted` confirmed on |
 |---|---|---|
-| TBD | TBD | TBD |
+| paper1 R23 (`D16`) | `10.1007/s00500-019-03807-9` | 2026-09-03 — `is_retracted: true`, read from `https://api.openalex.org/works/https://doi.org/10.1007/s00500-019-03807-9` at build time and confirmed independently by Roy in the browser. Record: Saravanan, Mohanraj, Senthilkumar, *A fuzzy entropy technique for dimensionality reduction in recommender systems using deep learning*, Soft Computing 23 (8) (2019) 2575–2583. |
+
+The entry's own title carries **no retraction marker**, which is why this DOI was chosen
+over two other in-field candidates whose OpenAlex titles are prefixed `RETRACTED:` /
+`RETRACTED ARTICLE:`. With a prefix, writing the reference with the clean printed title
+drops title similarity against the registry record and can turn `conflict` + `[retracted]`
+into `conflict` + `[]` — the right status for the wrong reason, which exact-set indicator
+matching (D-024) scores as a miss. Here the registry flag is the only signal.
+
+Two prefix-free backups, both verified `is_retracted: true` on 2026-09-03, held in case
+this record changes: `10.3233/jifs-223384` (Zhang, Wang, Fan, J. Intelligent & Fuzzy
+Systems 44 (6) (2023) 9527–9544) and `10.1155/2022/7111034` (Wu, Security and
+Communication Networks 2022, 1–10).
 
 ## Handoff notes for Roy
 
