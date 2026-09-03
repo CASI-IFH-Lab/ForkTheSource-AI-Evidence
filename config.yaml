@@ -1,0 +1,10 @@
+models:
+  extractor:       llama4-scout-17b
+  judge:           TBD-reasoning-model
+  repro_extractor: llama4-scout-17b
+  repro_judge:     TBD-reasoning-model
+  critic:          TBD-different-family-model
+temperature: 0.1
+resolvers:
+  cache_dir: cache/
+  timeout_seconds: 10
