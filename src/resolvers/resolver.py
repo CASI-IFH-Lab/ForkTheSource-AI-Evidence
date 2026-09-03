@@ -40,6 +40,25 @@ from src.resolvers import arxiv, openalex
 from src.resolvers.arxiv import ARXIV_DOI_PREFIX
 
 
+#: Which branch of the waterfall produced a result. Stamped into raw["_lookup_branch"]
+#: so P5 can tell a DOI hit from a title-search GUESS - see D-104.
+BRANCH_DOI = "doi"
+BRANCH_ARXIV = "arxiv_id"
+BRANCH_TITLE = "title_search"
+
+
+def _stamp(resolved: ResolvedSource, branch: str) -> ResolvedSource:
+    """Record which branch resolved this, in our own raw dict - not a contract change.
+
+    P5's classifier gates on it: a title-search hit is a CANDIDATE, not a confirmation.
+    Measured in P4: resolving a real PLOS reference by title returned a DIFFERENT PLOS
+    Biology article, on the branch that carries 14 of 34 PLOS references. D-104.
+    """
+    stamped = resolved.model_copy(deep=True)
+    stamped.raw = {**stamped.raw, "_lookup_branch": branch}
+    return stamped
+
+
 def _guarded(
     label: str,
     call: Callable[[], ResolvedSource | None],
@@ -143,13 +162,13 @@ def resolve(ref: Reference, notes: list[str] | None = None) -> ResolvedSource | 
                 f"arxiv {candidate}", lambda: arxiv.lookup_arxiv(candidate, notes), notes
             )
             if resolved is not None:
-                return _enrich_retraction(resolved, notes)
+                return _stamp(_enrich_retraction(resolved, notes), BRANCH_ARXIV)
         if doi:
             resolved = _guarded(
                 f"openalex {doi}", lambda: openalex.lookup_doi(doi, notes), notes
             )
             if resolved is not None:
-                return resolved
+                return _stamp(resolved, BRANCH_ARXIV)
         if notes is not None:
             notes.append(f"arxiv-first branch exhausted for {ref.ref_id}")
         # Fall through to the title search rather than giving up: an arXiv id that does
@@ -164,10 +183,10 @@ def resolve(ref: Reference, notes: list[str] | None = None) -> ResolvedSource | 
                 f"crossref {doi}", lambda: crossref.lookup_doi(doi, notes), notes
             )
             if resolved is not None:
-                return _enrich_retraction(resolved, notes)
+                return _stamp(_enrich_retraction(resolved, notes), BRANCH_DOI)
         resolved = _guarded(f"openalex {doi}", lambda: openalex.lookup_doi(doi, notes), notes)
         if resolved is not None:
-            return resolved
+            return _stamp(resolved, BRANCH_DOI)
 
     # Branch 3 - title search, and the last resort for the two branches above.
     title = (ref.title or "").strip()
@@ -182,10 +201,10 @@ def resolve(ref: Reference, notes: list[str] | None = None) -> ResolvedSource | 
             f"crossref search {title[:60]!r}", lambda: crossref.search_title(title, notes), notes
         )
         if resolved is not None:
-            return _enrich_retraction(resolved, notes)
+            return _stamp(_enrich_retraction(resolved, notes), BRANCH_TITLE)
     resolved = _guarded(
         f"openalex search {title[:60]!r}", lambda: openalex.search_title(title, notes), notes
     )
     if resolved is not None:
-        return _enrich_retraction(resolved, notes)
+        return _stamp(_enrich_retraction(resolved, notes), BRANCH_TITLE)
     return None

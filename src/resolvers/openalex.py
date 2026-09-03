@@ -59,8 +59,24 @@ def _source(work: dict[str, Any]) -> dict[str, Any]:
     return ((work.get("primary_location") or {}).get("source") or {}) or {}
 
 
+#: OpenAlex's own work type for a preprint, and its own source type for a preprint
+#: server. Both are provider-native fields, which is what D-036 permits - the earlier
+#: three-signal list in the P4 card was examples, not an enumeration.
+_PREPRINT_TYPES = {"preprint"}
+_PREPRINT_SOURCE_TYPES = {"repository"}
+
+
 def is_preprint_from_work(work: dict[str, Any]) -> bool | None:
-    """Tri-state. Only "article in a journal" is allowed to mean False. D-036."""
+    """Tri-state, from OpenAlex's own fields only. D-036.
+
+    True  - OpenAlex types the work a preprint, or its primary location is a repository
+    False - an article in a journal
+    None  - anything else: OpenAlex did not say, and None is NOT False
+    """
+    if work.get("type") in _PREPRINT_TYPES:
+        return True
+    if _source(work).get("type") in _PREPRINT_SOURCE_TYPES:
+        return True
     if work.get("type") == "article" and _source(work).get("type") == "journal":
         return False
     return None

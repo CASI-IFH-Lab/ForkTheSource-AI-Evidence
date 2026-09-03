@@ -124,6 +124,106 @@ And three at the B1 review itself (`main` `b1d7f65`):
 
 ---
 
+## D-107 — The ADDENDUM's framing is adopted in P5's rationales and in the classifier's severity
+
+**Date** 2026-09-03 · **Decided by** Ritik (P5), adopting Arsha's ADDENDUM · **Status**: active
+
+**Affects**: every rationale string `src/matching/rules.py` produces, and therefore the
+dashboard, the eval's language check, and the demo. `ADDENDUM_hallucination_framing.md`.
+
+**Decision**: P5 adopts the ADDENDUM in two concrete ways rather than as a sentiment.
+
+1. **Rationales state what was compared and what agreed**, never a judgement about the
+   author or the citation's honesty. Every branch of the classifier ends in a sentence
+   naming the signal values and what a reviewer should confirm. A test runs the **full
+   cross-product** of evidence shapes - over 500 of them - through
+   `rule_based_status` and asserts that no `settings.banned_terms()` entry appears in
+   any rationale. Vacuity is guarded too: the test asserts `banned_terms` is non-empty.
+2. **`conflict` is reserved for a disagreement in the EVIDENCE**, not for a lookup we
+   could not complete. `unresolvable` is the honest status for "we did not find it".
+
+Point 2 has a **measured hole, reported and not silently patched** - see the P5 report
+and D-104's note. The card's mapping sends "weak title + no author overlap" to
+`conflict`, and on real input that fires 16 times in 74 references where the *citation*
+is correct and our own title search returned the wrong paper. The mapping is implemented
+as specified because it is the spec; the finding is the reviewer's to rule on.
+
+## D-106 — D-020's P5 half: `version_mismatch` fires only on values a provider actually stated
+
+**Date** 2026-09-03 · **Decided by** Ritik (P5) · **Status**: active — **closes D-020**
+
+**Affects**: `src/matching/evidence.py`, A1's judge (reads the indicator), R2 (scores it).
+
+**Decision**: `version_mismatch` is asserted when, and only when, **exactly one side is
+known to be a preprint**:
+
+* reference side — `ref.arxiv_id` is set, or `ref.doi` starts with `10.48550/` (D-037)
+* resolved side — `resolved.is_preprint is True`
+* **`resolved.is_preprint is None` → do NOT fire.** None means the provider did not say.
+  Collapsing it to `False` would assert "definitely the published version" on missing
+  data, which is the one thing D-020 forbids. A note records the unknown instead.
+* it additionally requires **strong title similarity**, because preprint-versus-published
+  is a claim about one work, and on a weak match we do not know the two records describe
+  the same work.
+
+**Explicitly NOT signals**: venue divergence and year difference. Both fire on ordinary
+differences between a printed citation and a registry record, and D-036 already
+established that `venue` cannot carry this.
+
+On real input `is_preprint` is `None` for 9 of 40 and 9 of 34 references, so the
+do-not-fire branch is the common case, not a technicality.
+
+## D-105 — `year_delta` stores `abs()`, because the contract's `ge=0` makes the natural implementation raise
+
+**Date** 2026-09-03 · **Decided by** Ritik (P5) · **Status**: active
+
+**Affects**: `src/matching/evidence.py`, and any rule reading `year_delta`.
+
+**Decision**: `MatchEvidence.year_delta = abs(resolved.year - reference.year)`, and
+`None` when either side has no year.
+
+**Why it needs writing down**: the field is `ge=0` in the frozen contract. The natural
+implementation, `resolved.year - reference.year`, **raises at construction** the moment a
+reference carries a year later than the record's — and "cited with a year later than the
+real one" is the wrong-year defect's primary direction, so the natural implementation
+fails on precisely the rows the eval exists to catch. The failure would arrive as a
+pydantic ValidationError from inside `build_evidence`, i.e. as a P5 crash on Roy's
+corpus rather than as a defect detection.
+
+The sign is not information we gave up: no rule asks which direction the year moved, and
+a reviewer reading "a 3-year difference in publication year" does not need it. If a rule
+ever needs the direction, both years are on the evidence via `resolved` and the
+reference.
+
+## D-104 — A title-search hit is a CANDIDATE, not a confirmation; `raw["_lookup_branch"]` records the branch
+
+**Date** 2026-09-03 · **Decided by** Ritik (P4 finding, P5 implementation) · **Status**: active
+
+**Affects**: `src/resolvers/resolver.py` (stamps it), `src/matching/rules.py` (gates on
+it), R2's baseline scoring.
+
+**Decision**: `resolve()` stamps `resolved.raw["_lookup_branch"]` with exactly one of
+`"doi"`, `"arxiv_id"`, `"title_search"`. It lives in our own `raw` dict, so it is not a
+contract change and needs nobody else's agreement.
+
+`rule_based_status` then applies a gate: **a record found by title search may not reach
+`verified` on title similarity alone.** It needs a strong title AND `author_overlap`
+above `author_strong`.
+
+**The measurement that forced it** (P4): resolving a real `plos_sample.pdf` reference by
+title returned `10.1371/journal.pbio.1002626` — a *different* PLOS Biology article — and
+the title-search branch carries **16 of 34** PLOS references and **18 of 40** arXiv ones.
+Without the gate a mis-resolution scores `verified`, which is the one status a reviewer
+never re-reads: a false negative that is invisible by construction. On the current corpus
+the gate demotes **2** references out of `verified` on `sample.pdf` and 0 on
+`plos_sample.pdf`.
+
+**Known adjacent hole, reported not patched**: the gate stops a bad title-search hit
+reaching `verified`, but the card's mapping still sends a *weak* title-search hit to
+`conflict`. On real input that mislabels 16 of 74 correct citations as conflicts, because
+the disagreement is between the citation and **our own failed lookup**, not between the
+citation and reality. Ruling belongs to the reviewer; see the P5 report.
+
 ## D-103 — D-037's routing is implemented arXiv-first; `crossref.py` is imported lazily
 
 **Date** 2026-09-03 · **Decided by** Ritik · **Status**: active
