@@ -45,3 +45,21 @@ BLOCKS ME AT: 2:30, when the judge starts writing real rationales.
 
 ---
 
+
+## 2:20 — A2 STARTED
+tests: 327 passed
+publishes: render_ledger(ledger: Ledger) -> None
+notes: branch arsha/a2-dashboard, cut from main @ ad6681c with P1-P4 already in. Built against src/contract.py and tests/fixtures/ledger_fixture.json only — no import of src/ingest, src/resolvers, src/matching or src/pipeline, asserted twice.
+next: A2 merge, ETA 4:10
+
+## 3:45 — A2 AHEAD
+tests: 374 passed
+publishes: render_ledger(ledger: Ledger) -> None · dashboard.theme.STAGE_KEYS · summary_rows/worklist_rows/signal_rows/entry_panel/progress_stages, all pure functions over a Ledger
+notes: all three rows built — four counters with proportional bars, the seven-chip AIR strip naming the model per stage, the top-3 worklist and every entry as an expander with the as-printed/resolved pair and the signal table. doi_match renders three states, version_mismatch is deliberately not red, and the counts guard refuses to draw counters at all when counts_are_consistent() is false.
+next: A2 PR, then A3 once P6 lands
+
+## 3:45 — REQUEST -> @ritik
+NEED: P6's progress callback to emit exactly these seven stage_name strings — intake, extract, resolve, evidence, verdict, priority, ledger — with the real model name on extract and verdict and None on the other five.
+WHY: the AIR progress strip keys on those exact strings, so a mismatch lights no chip, raises no error, and silently kills the 0:20 demo beat where the AIR platform becomes visible — note the key is verdict, not judge, even though the chip is labelled "judge".
+UNBLOCKED MEANWHILE BY: in A2 the strip renders statically from the ledger, reading the judge model off Verdict.judge_model, so nothing is blocked yet.
+BLOCKS ME AT: 4:30, when A3 wires the live callback. Full entry: docs/decisions.md D-204.
