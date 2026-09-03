@@ -31,8 +31,9 @@ it had to:
   ("PLOS Biology | DOI:... 8 / 9") three times in the PLOS one. Left in, it would be
   glued onto the end of whichever entry preceded it.
 * **Wrapped lines are rejoined** with a space, except after a trailing hyphen, where
-  they join with none: "attention-\\nbased" -> "attention-based". The printed hyphen is
-  kept, because removing it would be normalising the title beyond whitespace.
+  the hyphen is DROPPED and the fragments join directly: "im-\\nage" -> "image". A hyphen
+  in that position is syllabic hyphenation, and leaving it in is what poisoned the title
+  search - see ``_rejoin``, which is the only place with enough information to decide.
 
 ## malformed is a side-channel, NOT a derived predicate
 
@@ -224,7 +225,34 @@ def _final_entry_end(lines: list[str], start: int) -> int:
 
 
 def _rejoin(lines: list[str]) -> str:
-    """One entry's lines into one string, with the hyphen rule."""
+    """One entry's lines into one string, with the hyphen rule.
+
+    **The hyphen decision is made HERE, at the join, and it cannot be made anywhere
+    else.** This function knows something the joined string does not: which hyphens
+    were the last character before a line break. A rule applied to the finished string
+    cannot tell `im-age` (a line-break artifact) from `short-term` (printed that way),
+    because by then they look identical - and both are common. 17 of 40 `sample.pdf`
+    entries carry a hyphen, genuine ones mixed in with artifacts.
+
+    So: a hyphen that was the last character before a break is DROPPED, because in
+    print that position is syllabic hyphenation. A hyphen anywhere else is kept
+    untouched. Measured on both real papers: 30 line-end hyphens, of which ~26 are
+    syllabic (`im-age`, `Convolu-tional`, `sci-ence`, `Pharma-ceutical`). This is what
+    poisons the title search - "Deep residual learning for im-age recognition" does not
+    find the paper it names, and the wrong record it does find scored `conflict`.
+
+    **The one exception is a hyphen after a digit**, which is printed punctuation inside
+    an identifier rather than a break in a word: `plos_sample.pdf` splits a DOI across
+    `10.1016/S0140-` / `6736(13)62227-8`, and dropping that hyphen produces a DOI that
+    is not the cited work's. A corrupted title finds nothing; a corrupted DOI can find
+    somebody else's paper and assert it confidently, which is the worse failure.
+
+    **Known cost, measured, not guessed:** a genuine compound that breaks exactly at its
+    own hyphen loses it - `attention-`/`based` becomes `attentionbased` and `pre-`/
+    `clinical` becomes `preclinical`. That is 2 words across 74 real references against
+    ~26 repaired ones, and neither survives into a lookup key that matters. Separating
+    those two cases needs a dictionary, which is not a thing this file is going to grow.
+    """
     out = ""
     for line in lines:
         piece = line.strip()
@@ -233,7 +261,10 @@ def _rejoin(lines: list[str]) -> str:
         if not out:
             out = piece
         elif out.endswith("-"):
-            out += piece
+            if len(out) >= 2 and out[-2].isdigit():
+                out += piece  # inside an identifier - keep the printed hyphen
+            else:
+                out = out[:-1] + piece  # line-break hyphenation - drop it
         else:
             out += " " + piece
     return out

@@ -561,6 +561,36 @@ def test_available_ledgers_always_offers_the_committed_fixture():
     assert FIXTURE_PATH in app.available_ledgers()
 
 
+def _without_cited_text(drawn: str) -> str:
+    """Strip everything the page drew that came from a CITED PAPER, not from us.
+
+    The banned-terms rule governs the language WE produce about a paper. It does not
+    govern a paper's own title, and a real reference in `plos_sample.pdf` is titled
+    "Reproducibility: fraud is not the big problem" - so the moment P6 wrote a real
+    ledger into `data/output/`, this test went red on a title we did not write and must
+    not censor. Refusing to render that title would be a worse failure than the one the
+    rule exists to prevent.
+
+    Only the live-page test needs this, because it renders whichever ledger the sidebar
+    picks first - a real one on any machine that has run the pipeline. The recorder
+    tests above run against the committed fixture and scan the drawn text whole, which
+    is where a banned term in OUR OWN copy still gets caught.
+    """
+    from src.contract import load_ledger
+
+    options = app.available_ledgers()
+    if not options:
+        return drawn
+    # The sidebar's selectbox defaults to the first option, so this is what rendered.
+    ledger = load_ledger(options[0])
+    for entry in ledger.entries:
+        ref = entry.reference
+        for source in (ref.title, ref.raw_text, ref.venue, *ref.authors):
+            if source:
+                drawn = drawn.replace(source, " ")
+    return drawn
+
+
 def test_the_whole_page_runs_end_to_end():
     """`streamlit run dashboard/app.py`, executed by Streamlit's own harness.
 
@@ -584,4 +614,4 @@ def test_the_whole_page_runs_end_to_end():
 
     drawn = "\n".join(block.value for block in at.markdown)
     assert drawn.count(COUNTER_MARKUP) == 4, "the four counters did not all render"
-    _assert_clean(drawn, "the live-rendered page")
+    _assert_clean(_without_cited_text(drawn), "the live-rendered page")

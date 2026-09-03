@@ -120,18 +120,65 @@ def test_wrapped_lines_are_rejoined_with_a_space():
     assert "\n" not in entries[0]
 
 
-def test_a_hyphenated_wrap_joins_with_no_space():
-    text = "[1] A. Author. Effective approaches to attention-\nbased translation. 2015.\n[2] B. B. Short. 2020."
+def test_a_line_break_hyphen_is_dropped_and_a_mid_line_hyphen_is_kept():
+    """FIX A. Both hyphens in ONE entry, so only the join position can tell them apart.
+
+    "im-" at a line end is syllabic hyphenation and becomes "image"; "short-term" is
+    printed that way and stays. A rule over the joined string sees the same two
+    characters in both and cannot make this call - ``_rejoin`` can, because it knows
+    where it joined.
+    """
+    text = (
+        "[1] A. Author. Deep residual learning for im-\n"
+        "age recognition with short-term memory. 2015.\n"
+        "[2] B. B. Short. 2020."
+    )
     entries = extractor.split_entries(text)
-    assert "attention-based" in entries[0]
-    assert "attention- based" not in entries[0]
+    assert "image recognition" in entries[0], entries[0]
+    assert "im-age" not in entries[0]
+    assert "im age" not in entries[0]
+    assert "short-term" in entries[0], "a mid-line hyphen is printed text, not an artifact"
 
 
-def test_hyphenated_wraps_in_both_real_papers(sample_doc, plos_doc):
-    arxiv = extractor.split_entries(sample_doc.references_text)
-    assert any("attention-based" in entry for entry in arxiv)
-    plos = extractor.split_entries(plos_doc.references_text)
-    assert any("pre-clinical" in entry for entry in plos)
+def test_a_hyphen_after_a_digit_survives_a_line_break():
+    """A DOI split across a break keeps its hyphen - plos_sample.pdf really does this.
+
+    A corrupted title finds nothing. A corrupted DOI can find somebody else's paper and
+    assert it confidently, so this one exception is worth the branch.
+    """
+    text = (
+        "[1] A. Author. A title. Lancet 383: 166-175. doi: 10.1016/S0140-\n"
+        "6736(13)62227-8 PMID: 24411643.\n"
+        "[2] B. B. Short. 2020."
+    )
+    entries = extractor.split_entries(text)
+    assert "10.1016/S0140-6736(13)62227-8" in entries[0], entries[0]
+
+
+def test_line_break_hyphens_are_healed_in_both_real_papers(sample_doc, plos_doc):
+    """The measured payoff: the words that poisoned the title search are whole again."""
+    arxiv = " || ".join(extractor.split_entries(sample_doc.references_text))
+    assert "image recognition" in arxiv and "im-age" not in arxiv
+    assert "Convolutional sequence" in arxiv and "Convolu-tional" not in arxiv
+
+    plos = " || ".join(extractor.split_entries(plos_doc.references_text))
+    assert "reproducibility of science" in plos and "sci-ence" not in plos
+    assert "Pharmaceutical Research" in plos and "Pharma-ceutical" not in plos
+
+
+def test_a_genuine_compound_broken_at_its_own_hyphen_loses_it(sample_doc, plos_doc):
+    """The measured COST of the rule above, asserted so it cannot regress silently.
+
+    "attention-"/"based" and "pre-"/"clinical" are genuine compounds that happen to
+    break at their own hyphen, and the join position cannot tell them from "im-"/"age".
+    2 words across 74 references against ~26 repaired ones. Separating them needs a
+    dictionary. If this test ever fails, someone has added one - update the count.
+    """
+    arxiv = " || ".join(extractor.split_entries(sample_doc.references_text))
+    assert "attentionbased" in arxiv and "attention-based" not in arxiv
+
+    plos = " || ".join(extractor.split_entries(plos_doc.references_text))
+    assert "preclinical research" in plos
 
 
 def test_a_wrapped_line_starting_with_a_number_is_not_a_marker():

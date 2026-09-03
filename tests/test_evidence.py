@@ -343,6 +343,131 @@ def test_the_gate_applies_only_to_the_title_search_branch():
         assert rule_based_status(evidence)[0] == VerdictStatus.VERIFIED.value, branch
 
 
+# ---------------------------------------------------------------------------
+# A weak title-search hit is unresolvable, not conflict - D-108
+# ---------------------------------------------------------------------------
+
+#: The three measured cases from the P5 report, with their real signal values. Each is a
+#: CORRECTLY cited reference that scored `conflict` because our own title search returned
+#: a different paper.
+D108_CASES = (
+    ("R11", 0.66, 0.00, "Deep residual learning for image recognition"),
+    ("R13", 0.35, 0.00, "Long short-term memory"),
+    ("R33", 0.07, 0.00, "Governing the Commons"),
+)
+
+
+@pytest.mark.parametrize(("ref_id", "similarity", "overlap", "title"), D108_CASES)
+def test_a_weak_title_search_hit_is_unresolvable_not_conflict(ref_id, similarity, overlap, title):
+    """D-108. The three references from FINDING 1, at their measured signal values.
+
+    `conflict` asserts the citation disagrees with the record. On this branch there is
+    no record - the search returned its best hit, which is not the right hit - so the
+    only thing we have evidence of is a bad search.
+    """
+    searched = make_resolved(raw={"_lookup_branch": "title_search"})
+    evidence = make_evidence(
+        ref_id=ref_id,
+        resolved=searched,
+        title_similarity=similarity,
+        author_overlap=overlap,
+        doi_match=None,
+    )
+    status, confidence, rationale = rule_based_status(evidence)
+    assert status == VerdictStatus.UNRESOLVABLE.value, f"{ref_id} ({title}) -> {status}"
+    assert status != VerdictStatus.CONFLICT.value
+    assert "no sufficiently-matching record" in rationale
+    assert 0.0 <= confidence <= 1.0
+
+
+def test_the_same_weak_match_on_an_identifier_branch_is_still_a_conflict():
+    """D-108 narrows `conflict`; it does not remove it.
+
+    On the doi and arxiv_id branches an identifier tied the record to the reference, so
+    a title sharing nothing with it IS a disagreement and stays one.
+    """
+    for branch in ("doi", "arxiv_id"):
+        resolved = make_resolved(raw={"_lookup_branch": branch})
+        evidence = make_evidence(
+            resolved=resolved, title_similarity=0.07, author_overlap=0.0, doi_match=None
+        )
+        assert rule_based_status(evidence)[0] == VerdictStatus.CONFLICT.value, branch
+
+
+def test_a_title_search_hit_with_no_author_overlap_is_unresolvable_even_on_a_fair_title():
+    """"weak" is below title_weak OR no author overlap - either one, not both."""
+    searched = make_resolved(raw={"_lookup_branch": "title_search"})
+    evidence = make_evidence(
+        resolved=searched, title_similarity=0.80, author_overlap=0.0, doi_match=None
+    )
+    assert rule_based_status(evidence)[0] == VerdictStatus.UNRESOLVABLE.value
+
+
+def test_d108_does_not_swallow_the_d104_gate():
+    """A STRONG title-search hit with no author agreement stays `needs_check`.
+
+    D-104's demotion is a different statement - we found a plausible record and want it
+    confirmed - and D-108 must not quietly replace it with "we found nothing".
+    """
+    searched = make_resolved(raw={"_lookup_branch": "title_search"})
+    evidence = make_evidence(resolved=searched, title_similarity=0.99, author_overlap=0.0)
+    status, _, rationale = rule_based_status(evidence)
+    assert status == VerdictStatus.NEEDS_CHECK.value
+    assert "searching the title" in rationale
+
+
+def test_a_doi_mismatch_on_a_weak_title_search_hit_is_not_a_conflict():
+    """plos_sample.pdf R24: a weak title search returned an unrelated book chapter, and
+    its differing DOI then read as a conflict. The DOI is computed against a record we
+    did not find - the same bad search wearing a stronger word."""
+    searched = make_resolved(raw={"_lookup_branch": "title_search"})
+    evidence = make_evidence(
+        resolved=searched,
+        title_similarity=0.44,
+        author_overlap=0.0,
+        doi_match=False,
+        indicators=[Indicator.DOI_MISMATCH],
+    )
+    assert rule_based_status(evidence)[0] == VerdictStatus.UNRESOLVABLE.value
+
+
+def test_a_doi_mismatch_on_an_identifier_branch_is_still_a_conflict():
+    """The doi and arxiv_id branches are untouched: there the record was fetched BY the
+    identifier, so a differing DOI on it is a real disagreement."""
+    resolved = make_resolved(raw={"_lookup_branch": "doi"})
+    evidence = make_evidence(
+        resolved=resolved,
+        title_similarity=0.40,
+        author_overlap=0.0,
+        doi_match=False,
+        indicators=[Indicator.DOI_MISMATCH],
+    )
+    assert rule_based_status(evidence)[0] == VerdictStatus.CONFLICT.value
+
+
+def test_a_retraction_outranks_d108_even_on_a_weak_title_search_hit():
+    """D-108 sits BELOW the retraction check. Suppressing the highest-severity thing a
+    provider tells us is not a call this branch makes."""
+    retracted = make_resolved(raw={"_lookup_branch": "title_search"}, is_retracted=True)
+    evidence = make_evidence(
+        resolved=retracted,
+        title_similarity=0.20,
+        author_overlap=0.0,
+        indicators=[Indicator.RETRACTED],
+    )
+    assert rule_based_status(evidence)[0] == VerdictStatus.CONFLICT.value
+
+
+def test_a_partial_title_search_agreement_is_still_needs_check():
+    """Some author overlap and a title above title_weak is partial agreement, not a
+    failed search - D-108 must not eat the middle of the range."""
+    searched = make_resolved(raw={"_lookup_branch": "title_search"})
+    evidence = make_evidence(
+        resolved=searched, title_similarity=0.80, author_overlap=0.5, doi_match=None
+    )
+    assert rule_based_status(evidence)[0] == VerdictStatus.NEEDS_CHECK.value
+
+
 def test_a_missing_branch_stamp_does_not_crash_the_classifier():
     """An older cached ResolvedSource may have no _lookup_branch."""
     resolved = make_resolved(raw={})

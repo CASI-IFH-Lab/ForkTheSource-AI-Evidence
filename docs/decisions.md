@@ -124,6 +124,70 @@ And three at the B1 review itself (`main` `b1d7f65`):
 
 ---
 
+## D-108 — A weak title-search hit is `unresolvable`, not `conflict`; and a line-break hyphen is dropped at the join
+
+**Date** 2026-09-03 (P6 branch) · **Decided by** Ritik, on the P5 report's two findings ·
+**Status**: active
+
+**Affects**: `src/matching/rules.py` (the classifier's status mapping),
+`src/ingest/extractor.py::_rejoin`, Roy's R2 baseline and his clean-control release gate,
+Arsha's A1 fallback and every rationale the dashboard renders.
+
+**Decision, part 1 — the status.** When `resolved.raw["_lookup_branch"] == "title_search"`
+AND the match is weak — `title_similarity` below `thresholds.title_weak`, **or** zero
+author overlap — the status is **`unresolvable`**, with a rationale saying the search
+returned no sufficiently-matching record. It is no longer `conflict`. D-104's separate
+demotion is untouched: a *strong* title-search hit with no author agreement is still
+`needs_check`, because "we found a plausible record and want it confirmed" and "we found
+nothing" are different statements. The weak-match `conflict` rule survives on the `doi`
+and `arxiv_id` branches, where an identifier tied the record to the reference.
+
+**Decision, part 2 — the hyphen.** `_rejoin` drops a hyphen that was the last character
+before a line break and keeps every other hyphen untouched. The decision is made **at the
+join**, never by a rule over the joined string: 17 of 40 `sample.pdf` entries carry a
+hyphen and genuine ones (`short-term`, `encoder-decoder`) are mixed in with artifacts, so
+by the time the string exists the two cases are indistinguishable. One exception: a hyphen
+preceded by a digit is kept, because `plos_sample.pdf` splits a DOI across
+`10.1016/S0140-` / `6736(13)62227-8` and a corrupted DOI resolves to somebody else's
+paper.
+
+**Why**: measured, on all 74 real references. 16 of them were **correctly cited** and
+scored `conflict` — the second-highest severity, and in this project's vocabulary an
+assertion that the citation disagrees with the record. It did not. Our own title search
+returned a different paper, and the corrupted title it searched with is why: `R11` printed
+"Deep residual learning for im-age recognition" (sim 0.66, authors 0.00, resolved to
+"RARN: Lightweight Deep Residual Learning with Attention"), `R13` "Long short-term memory"
+(sim 0.35, resolved to a cryptocurrency-forecasting paper), `R33` "Governing the Commons"
+(sim 0.07, resolved to "Preface"). Part 2 is the root cause; part 1 is the guard for the
+cases part 2 does not repair.
+
+Two consequences made this urgent rather than tidy. Roy's clean-control release gate is a
+hard FAIL on any `conflict` against an `injected: false` reference, so the tool failed its
+own gate on its own papers. And `conflict` is precisely the accusation shape the ADDENDUM
+(D-107) exists to prevent: a bad search result is evidence of a bad search, not of a bad
+citation. `unresolvable` says what is true — we did not find the record.
+
+Rejected: leaving the mapping as the card wrote it and explaining the ~22% spurious
+conflicts in the metrics table. Also rejected: any hyphen rule applied after the join
+(dictionary lookups, "next fragment starts lowercase") — `attention-`/`based` and
+`im-`/`age` are the same shape after joining, and the lowercase test passes on both.
+
+**Consequence**: **`unresolvable` counts rise and `conflict` counts fall, and that is the
+correct direction** — the tool is admitting what it did not find instead of asserting a
+disagreement it cannot support. **Roy**: re-score any baseline taken before this; the
+clean-control gate should now pass. **Arsha**: `rule_based_status` may return
+`unresolvable` on evidence where `ev.resolved is not None`; status and evidence are
+independent and always were, but the combination did not occur before today. **Known cost
+of part 2, measured**: a genuine compound that breaks at its own hyphen loses it —
+`attention-based` and `pre-clinical` become `attentionbased` and `preclinical`, 2 words
+against ~26 repaired ones across 74 references. There is a named test asserting the cost
+so it cannot grow unnoticed. **Cache**: entry text is already part of P2's cache key, so
+the changed entries miss and the unchanged ones stay warm. `PROMPT_VERSION` is
+deliberately NOT bumped — the prompt did not change, and bumping it would take all 74
+entries cold to invalidate the ~20 that moved.
+
+---
+
 ## D-107 — The ADDENDUM's framing is adopted in P5's rationales and in the classifier's severity
 
 **Date** 2026-09-03 · **Decided by** Ritik (P5), adopting Arsha's ADDENDUM · **Status**: active

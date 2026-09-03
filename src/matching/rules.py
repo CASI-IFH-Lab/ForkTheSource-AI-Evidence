@@ -13,6 +13,8 @@ every MatchEvidence gets a status - and it must never raise.
     retracted or doi_mismatch                           -> conflict
     strong title + year within tolerance + (DOI agrees
       or authors agree)                                 -> verified
+    title_search branch, NOT a strong title, and either
+      a weak title or no author overlap                 -> unresolvable  (D-108)
     weak title + no author overlap                      -> conflict
     otherwise                                           -> needs_check
 
@@ -28,6 +30,15 @@ real PLOS reference by title returned a *different* PLOS Biology article, and th
 branch carries 14 of `plos_sample.pdf`'s 34 references. Without this gate the
 mis-resolution scores `verified` - a false negative a reviewer never sees, because
 `verified` is the one status nobody re-reads. D-104.
+
+**A weak title-search hit is `unresolvable`, not `conflict`.** D-108, and it is the
+same argument as D-104 carried one step further. On the `title_search` branch nothing
+identifies the record as the cited work except the search that returned it, so a weak
+hit is evidence about the SEARCH, not about the citation. Measured: 16 of 74 real,
+correctly-cited references scored `conflict` on this path - and `conflict` is the status
+Roy's clean-control release gate fails on. The tool was failing its own gate on its own
+papers while asserting a disagreement it had no record to support. `conflict` requires
+evidence of disagreement; a bad search result is evidence of a bad search.
 
 **`version_mismatch` alone is NOT a conflict.** A paper citing the preprint of a work
 that was later published is *ordinary* and extremely common; it is worth surfacing and
@@ -54,6 +65,7 @@ _CONFIDENCE = {
     "conflict_retracted": 0.95,
     "conflict_doi_mismatch": 0.90,
     "conflict_weak_match": 0.70,
+    "unresolvable_bad_search": 0.65,
     "verified_doi": 0.95,
     "verified_authors": 0.85,
     "needs_check_default": 0.50,
@@ -107,8 +119,11 @@ def rule_based_status(ev: MatchEvidence) -> tuple[str, float, str]:
 
     provider = ev.resolved.provider
     branch = _branch(ev)
+    strong_title = ev.title_similarity >= title_strong
+    authors_agree = ev.author_overlap >= author_strong
+    year_ok = _year_ok(ev, year_tolerance)
 
-    # ---- conflict: retraction and DOI disagreement -----------------------
+    # ---- conflict: retraction --------------------------------------------
     if Indicator.RETRACTED.value in indicators:
         return (
             VerdictStatus.CONFLICT.value,
@@ -118,6 +133,40 @@ def rule_based_status(ev: MatchEvidence) -> tuple[str, float, str]:
             "A reviewer should check whether a retraction notice applies to the citation.",
         )
 
+    # ---- the search that did not find it (D-108) -------------------------
+    # On the title_search branch nothing ties the record to the printed reference except
+    # the search that returned it, and a search returns its best hit, not the right hit.
+    # When that hit is weak, the disagreement is between the citation and OUR OWN FAILED
+    # SEARCH, not between the citation and the record of the work. `conflict` asserts the
+    # citation disagrees with the record; here there is no record to disagree with.
+    #
+    # This sits ABOVE the doi_mismatch check on purpose. A DOI computed against a record
+    # a weak title search returned is the same bad search wearing a stronger word: on
+    # `plos_sample.pdf`, R24's printed reference resolved to an unrelated book chapter
+    # (similarity 0.44, no shared author) and the differing DOI then read as a conflict.
+    # It stays BELOW the retraction check, because a retraction is the highest-severity
+    # thing any provider tells us and suppressing one is not a call this branch makes.
+    #
+    # `not strong_title` keeps D-104's gate intact: a STRONG title-search hit with no
+    # author agreement is "we found a plausible record and want it confirmed", which is
+    # `needs_check` and a different statement from "we found nothing".
+    if (
+        branch == _TITLE_SEARCH
+        and not strong_title
+        and (ev.title_similarity < title_weak or ev.author_overlap <= 0.0)
+    ):
+        return (
+            VerdictStatus.UNRESOLVABLE.value,
+            _CONFIDENCE["unresolvable_bad_search"],
+            "no identifier was printed for this reference, so it was looked up by "
+            f"title, and the search returned no sufficiently-matching record: title "
+            f"similarity {ev.title_similarity:.2f} and author overlap "
+            f"{ev.author_overlap:.2f} against the closest hit {provider} offered. That "
+            "is a limit of the search, not a disagreement with the reference. A "
+            "reviewer should locate the work directly.",
+        )
+
+    # ---- conflict: DOI disagreement --------------------------------------
     if Indicator.DOI_MISMATCH.value in indicators:
         return (
             VerdictStatus.CONFLICT.value,
@@ -126,10 +175,6 @@ def rule_based_status(ev: MatchEvidence) -> tuple[str, float, str]:
             f"similarity is {ev.title_similarity:.2f}. A reviewer should confirm which "
             "identifier belongs to the cited work.",
         )
-
-    strong_title = ev.title_similarity >= title_strong
-    authors_agree = ev.author_overlap >= author_strong
-    year_ok = _year_ok(ev, year_tolerance)
 
     # ---- the title-search gate (D-104) -----------------------------------
     # A title search returns the best hit, not the right hit. On this branch a strong
@@ -165,6 +210,8 @@ def rule_based_status(ev: MatchEvidence) -> tuple[str, float, str]:
         )
 
     # ---- conflict: the match itself is weak ------------------------------
+    # Reached only on the doi and arxiv_id branches now: there an identifier tied the
+    # record to the reference, so a title that shares nothing with it IS a disagreement.
     if ev.title_similarity < title_weak and ev.author_overlap <= 0.0:
         return (
             VerdictStatus.CONFLICT.value,
