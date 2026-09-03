@@ -156,7 +156,7 @@ def test_priority_weights_raise_on_a_missing_scalar(key: str):
     """
     config = settings.load_config()
     del config["priority"][key]
-    with pytest.raises(KeyError, match=key):
+    with pytest.raises(RuntimeError, match=key):
         settings.priority_weights(config)
 
 
@@ -165,7 +165,7 @@ def test_priority_weights_names_every_missing_key_at_once():
     config = settings.load_config()
     for key in settings.PRIORITY_SCALARS:
         del config["priority"][key]
-    with pytest.raises(KeyError) as excinfo:
+    with pytest.raises(RuntimeError) as excinfo:
         settings.priority_weights(config)
     for key in settings.PRIORITY_SCALARS:
         assert key in str(excinfo.value)
@@ -174,8 +174,38 @@ def test_priority_weights_names_every_missing_key_at_once():
 def test_priority_weights_raise_when_the_whole_block_is_gone():
     config = settings.load_config()
     del config["priority"]
-    with pytest.raises(KeyError, match="priority"):
+    with pytest.raises(RuntimeError, match="priority"):
         settings.priority_weights(config)
+
+
+def test_config_absence_raises_runtimeerror_not_keyerror():
+    """D-038: one failure type for config absence, across the repo.
+
+    Adopted from B1's src/priority.py rather than the other way round - a KeyError reads
+    as a loader bug, and this failure is "your config file is incomplete". Asserted as
+    NOT KeyError explicitly, because RuntimeError is not a KeyError subclass and a future
+    "simplification" back to KeyError would otherwise pass the match= tests above.
+    """
+    config = settings.load_config()
+    del config["priority"]["cap"]
+    with pytest.raises(RuntimeError) as excinfo:
+        settings.priority_weights(config)
+    assert not isinstance(excinfo.value, KeyError)
+    assert "D-038" in str(excinfo.value)
+
+
+def test_priority_weights_and_b1s_loader_agree_on_the_failure_type():
+    """The convention is only worth having if both implementations share it."""
+    from src import priority
+
+    config = settings.load_config()
+    del config["priority"]["usage_base"]
+    with pytest.raises(RuntimeError):
+        settings.priority_weights(config)
+    # B1's loader reads config.yaml itself, so it cannot take our mutated dict; assert
+    # the type it declares instead of re-deriving its lookup.
+    assert priority._load_priority_config.__doc__ is not None
+    assert "RuntimeError" in priority._load_priority_config.__doc__
 
 
 def test_b1s_priority_call_path_sees_all_five_keys():

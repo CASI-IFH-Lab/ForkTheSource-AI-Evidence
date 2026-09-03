@@ -6,3 +6,4 @@ cache/
 eval/outputs/
 data/
 .DS_Store
+*.code-workspace
