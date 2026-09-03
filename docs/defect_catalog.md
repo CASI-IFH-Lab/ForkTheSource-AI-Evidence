@@ -17,17 +17,28 @@ here maps to exactly one expected status and one expected indicator set, per
 they are decided at R1, when the actual PDFs are picked. This is the specification of what
 to inject, not a record of what was injected.
 
+**All nine ambiguities from the first pass have been ruled on.** Each expected outcome below
+is now a decision, not a proposal. The rulings and their reasoning are tabulated at the end
+of [`eval/golden/FORMAT.md`](../eval/golden/FORMAT.md#rulings). One of them —
+ruling 1 — places a constraint on P5, which is unwritten code; see *A promise the corpus
+makes to P5 step 2* below, and raise it at Sync 1.
+
 > Ground truth is the Module Implementation Plan, R1 step 2 and R2 step 2. The plan lands
 > in the repo at `docs/module_implementation_plan.pdf` when B0 (merge-queue #1) merges.
 
 ## Two counts that are not the same number
 
-- **21 injections.** The defect-recall denominator in R2's target (`≥ 19/21`).
-- **23 labelled entries with `injected: true`.** Each duplicate-entry defect is one
-  injection that produces **two** ledger entries, and both carry the indicator.
+- **21 injections** = 21 distinct `defect_id`s, `D01`-`D21`. The recall denominator in R2's
+  target (`≥ 19/21`).
+- **23 labelled rows with `injected: true`.** Each duplicate-entry defect is one injection
+  producing **two** ledger entries, and both carry the indicator and **share one
+  `defect_id`**.
 
-Do not let these drift together. R2's recall is over injections; the label files contain
-23 injected rows. See the *duplicate entry* section.
+The `defect_id` field is what reconciles these without anyone string-matching the `defect`
+free text. Recall is computed over distinct `defect_id`s, and **a `defect_id` counts as
+matched only when every one of its rows matches** — half-detecting a duplicate is not half
+a detection, because a reviewer shown only one of the two copies cannot see there is a
+duplication at all.
 
 ## Summary distribution
 
@@ -52,39 +63,53 @@ Seven per paper is deliberate: enough that a single paper exercises most of the
 vocabulary, few enough that no paper becomes implausibly broken. A paper where a third of
 the bibliography is wrong stops resembling the thing we claim to check.
 
+**Injections: 21. Labelled rows: 23.** The two duplicate-entry defects contribute two rows
+each under one `defect_id`. Every other defect is one row, one id.
+
+Each of the three spiked papers must **also** retain at least one genuine `unresolvable`
+reference as `injected: false` — a book, thesis or standard. That is a corpus requirement,
+not a defect: without it, precision on `unresolvable` cannot be measured, because a
+hallucinated reference and a real unresolvable one produce identical output. See section 2.
+
 ## The injection worklist — defect → paper → ref_id → expected outcome
 
 Fill `Paper` and `ref_id` at R1. This is the table a teammate spot-verifies five random
 rows from, and the one to read on stage.
 
-| # | Defect type | Paper | ref_id | expected_status | expected_indicators |
+| defect_id | Defect type | Paper | ref_id | expected_status | expected_indicators |
 |---|---|---|---|---|---|
-| 1 | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
-| 2 | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
-| 3 | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
-| 4 | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
-| 5 | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
-| 6 | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
-| 7 | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[version_mismatch]` |
-| 8 | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[version_mismatch]` |
-| 9 | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[version_mismatch]` |
-| 10 | Mangled author list | TBD | TBD | `needs_check` | `[]` |
-| 11 | Mangled author list | TBD | TBD | `needs_check` | `[]` |
-| 12 | Duplicate entry (original) | TBD | TBD | `needs_check` | `[duplicate_entry]` |
-| 13 | Duplicate entry (the copy) | TBD | TBD | `needs_check` | `[duplicate_entry]` |
-| 14 | Duplicate entry (original) | TBD | TBD | `needs_check` | `[duplicate_entry]` |
-| 15 | Duplicate entry (the copy) | TBD | TBD | `needs_check` | `[duplicate_entry]` |
-| 16 | Orphan citation | TBD | TBD | `verified` | `[orphan]` |
-| 17 | Orphan citation | TBD | TBD | `verified` | `[orphan]` |
-| 18 | Retracted paper | TBD | TBD | `conflict` | `[retracted]` |
-| 19 | Retracted paper | TBD | TBD | `conflict` | `[retracted]` |
-| 20 | Malformed entry | TBD | TBD | `unresolvable` | `[malformed]` |
-| 21 | Malformed entry | TBD | TBD | `unresolvable` | `[malformed]` |
-| 22 | Preprint/journal version pair | TBD | TBD | `verified` | `[version_mismatch]` |
-| 23 | Preprint/journal version pair | TBD | TBD | `verified` | `[version_mismatch]` |
+| `D01` | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
+| `D02` | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
+| `D03` | Swapped DOI | TBD | TBD | `conflict` | `[doi_mismatch]` |
+| `D04` | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
+| `D05` | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
+| `D06` | Hallucinated reference | TBD | TBD | `unresolvable` | `[]` |
+| `D07` | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[]` |
+| `D08` | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[]` |
+| `D09` | Wrong year (±2-3) | TBD | TBD | `needs_check` | `[]` |
+| `D10` | Mangled author list | TBD | TBD | `needs_check` | `[]` |
+| `D11` | Mangled author list | TBD | TBD | `needs_check` | `[]` |
+| `D12` | Duplicate entry — first copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
+| `D12` | Duplicate entry — second copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
+| `D13` | Duplicate entry — first copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
+| `D13` | Duplicate entry — second copy | TBD | TBD | `needs_check` | `[duplicate_entry]` |
+| `D14` | Orphan citation | TBD | TBD | `verified` | `[orphan]` |
+| `D15` | Orphan citation | TBD | TBD | `verified` | `[orphan]` |
+| `D16` | Retracted paper | TBD | TBD | `conflict` | `[retracted]` |
+| `D17` | Retracted paper | TBD | TBD | `conflict` | `[retracted]` |
+| `D18` | Malformed entry (severe variant) | TBD | TBD | `unresolvable` | `[malformed]` |
+| `D19` | Malformed entry (severe variant) | TBD | TBD | `unresolvable` | `[malformed]` |
+| `D20` | Preprint/journal version pair | TBD | TBD | `verified` | `[version_mismatch]` |
+| `D21` | Preprint/journal version pair | TBD | TBD | `verified` | `[version_mismatch]` |
 
-Rows 12-15 are two injections, four labels. Rows are numbered 1-23 by label, so the last
-row number is 23 while the injection count is 21.
+**23 rows, 21 distinct `defect_id`s.** `D12` and `D13` each occupy two rows — one injection,
+two labelled references. Recall is over the 21 ids, and an id matches only if both its rows
+match.
+
+`defect_id`s are assigned **here, now**, and are globally unique across the whole corpus
+rather than per file. They are the one column in this table that is not `TBD`: fixing them
+before R1 starts means the ids never shift when papers are chosen, and R2 can be written
+against them before a single PDF exists.
 
 ---
 
@@ -105,7 +130,8 @@ Invisible to a human reader, who does not resolve DOIs by eye.
 paper. Pick something from a different field so the title similarity is near zero. Leave
 every other field untouched.
 
-**Expected:** `conflict` + `[doi_mismatch]`. Per P5's mapping, `doi_mismatch → conflict`.
+**Expected:** `conflict` + `[doi_mismatch]`. Unchanged and unambiguous. Per P5's mapping,
+`doi_mismatch → conflict`.
 
 **Misdetection analysis:**
 
@@ -127,8 +153,8 @@ the field but not a real collaboration, a title assembled from real terminology,
 real journal or conference. **No DOI and no arXiv ID** — a fabricated identifier would make
 this trivially detectable and would be testing a different thing.
 
-**Expected:** `unresolvable` + `[]`. No registry has it, so there is nothing to compare
-and no indicator fires.
+**Expected:** `unresolvable` + `[]`. **Ruled**, as originally recommended. No registry has
+it, so there is nothing to compare and no indicator fires.
 
 **Misdetection analysis:**
 
@@ -144,6 +170,18 @@ indicators. The pipeline cannot tell them apart, and neither can R2. Recall on t
 type is only meaningful because we know which `ref_id`s we fabricated. Do not expect a
 metric that separates them.
 
+### Corpus requirement, from ruling 8
+
+**Every spiked paper must retain at least one genuine `unresolvable` reference** — a book,
+thesis, standard or technical report — labelled `injected: false`,
+`expected_status: unresolvable`, `expected_indicators: []`.
+
+Without one there is no negative case in that paper, and **precision on `unresolvable`
+cannot be measured at all**: every `unresolvable` the pipeline emits would be a true
+positive by construction. A paper that happens to have no such reference is a reason to
+pick a different paper, not to skip the requirement. Record each one in the
+*legitimate unresolvable entries* table near the end of this file.
+
 ## 3. Wrong year (±2-3)
 
 **In the bibliography:** everything correct except the publication year, off by two or
@@ -153,41 +191,75 @@ the corpus.
 **How to inject:** change the year by +2, +3, or −2. Leave title, authors, venue
 untouched. **Inject on a reference that has no DOI** — see the misdetection table for why.
 
-**Expected:** `needs_check` + `[version_mismatch]`.
+**Expected:** `needs_check` + `[]`. **Ruled.**
 
-The status: `year_delta` exceeds `year_tolerance` (1), so the reference does not reach
-`verified`, and a year error is nowhere near a `conflict`. That leaves `needs_check`.
+### The P5 mapping walk that gets there
 
-The indicator is the uncomfortable part. There is **no `year_mismatch` in the closed
-vocabulary**, and `version_mismatch` is defined as "title+authors strong but venue/year
-differ" — which a wrong-year defect satisfies literally. So `version_mismatch` is the only
-available indicator, and it will fire. See the collision note below.
+Applying P5 step 3's mapping in order to a wrong-year reference:
+
+1. `resolved` is null? **No** — the work exists and resolves fine. So not `unresolvable`.
+2. `retracted` or `doi_mismatch` set? **No.** So not `conflict` by that branch.
+3. Strong title **and** year ok **and** (DOI or authors agree) → `verified`?
+   `title_similarity ≥ 0.92` ✓, but `|year_delta| > year_tolerance` (1) ✗. **Branch fails.**
+4. Weak title **and** no author overlap → `conflict`? The title is *strong* (≥ 0.92), not
+   weak (< 0.70). **Branch does not apply.**
+5. `else` → **`needs_check`.** ✓
+
+And the indicator set is empty, because under the constraint below `version_mismatch` does
+not fire on a year difference alone, and nothing else in the closed vocabulary describes a
+year error.
+
+### A promise the corpus makes to P5 step 2
+
+> **`version_mismatch` MUST require VENUE divergence. Year divergence alone must not set
+> it.**
+>
+> **Raise this at Sync 1.** It constrains code Ritik has not written yet, and it is the
+> only place in this catalog where the corpus imposes a requirement on the pipeline rather
+> than merely describing it.
+
+Why it has to be true: a year that differs while the venue is unchanged is a
+**transcription error** — somebody typed 2021 for a 2019 paper. A preprint and its journal
+version are a different thing entirely: same work, *different venue*, usually a different
+year as a side effect. The plan's own wording for the indicator is "preprint vs journal",
+and the venue is what makes it a preprint.
+
+What breaks without it: P5 emits `version_mismatch` on every wrong-year reference,
+`D07`-`D09` all come back as `needs_check` + `[version_mismatch]` against a label of
+`needs_check` + `[]`, and — because indicator matching is exact-set — **all three score as
+misses**. Recall drops to 18/21 and fails the plan's ≥ 19/21 target, for a defect the
+pipeline actually classified correctly. The status would be right and the metric would say
+no.
+
+**One concern with the ruling as written, for Sync 1.** "Venue divergence" is the right
+idea but a fragile test. Venue strings are the least normalised field in any bibliography —
+`Journal of Machine Learning Research` versus `J. Mach. Learn. Res.` are the same venue and
+differ on every character comparison. If P5 implements this as venue string inequality, it
+will fire `version_mismatch` on correctly-cited references throughout the corpus, and there
+is **no venue threshold in `config.yaml`** to tune it against: the four keys are
+`title_strong`, `title_weak`, `author_strong`, `year_tolerance`.
+
+**Recommendation: define it categorically instead** — `version_mismatch` fires when
+**exactly one** of the two records is a preprint (arXiv, bioRxiv, medRxiv, SSRN, or another
+preprint server), determined from the venue string or the presence of an arXiv ID. That is
+a boolean, needs no similarity threshold and no new config key, is immune to abbreviation
+noise, and encodes the plan's actual words — "preprint vs journal" — rather than a proxy
+for them. It also keeps every label in this catalog exactly as written.
+
+The corpus cannot absorb this constraint instead. Labelling wrong-year as `needs_check` +
+`[version_mismatch]` to match whatever P5 happens to do would make the wrong-year and
+version-pair labels differ only in status while sharing an indicator, and R2 would then be
+unable to distinguish a P5 bug from correct behaviour. Ground truth that bends to the
+implementation is not ground truth.
 
 **Misdetection analysis:**
 
 | If it comes out as | What that reveals |
 |---|---|
+| `needs_check` + `[version_mismatch]` | The constraint above was not implemented — P5 is setting the indicator on year divergence alone. This is the single most likely cause of a wrong-year miss, and it is a P5 bug, not a corpus bug. Check it before anything else. |
 | `verified` + `[]` | The reference had a DOI, the DOI matched, and the year never entered the decision. Not necessarily wrong behaviour — a matching DOI *is* strong evidence — but it means this defect type is untestable on DOI-bearing references. Inject only on DOI-less ones. |
-| `verified` + `[version_mismatch]` | The pipeline treated it as a preprint/journal pair. **Structurally indistinguishable** — see the collision note. Not a bug so much as a limit of the vocabulary. |
 | `conflict` | Over-eager: `year_delta` is being treated as decisive. A three-year error is a typo or a sloppy citation. Flagging it as a conflict is the kind of false alarm that costs the tool its credibility on the first real paper someone tries. |
-
-### The wrong-year / version-pair collision
-
-Defect types 3 and 9 both produce `version_mismatch`, with **different expected statuses**
-(`needs_check` vs `verified`). The pipeline has no signal that separates them: both are
-"title and authors strong, year differs".
-
-The only real discriminator is whether the two records are the *same work* published
-twice (preprint → journal) or one work cited with a wrong year — and that requires
-comparing venues, which is exactly what `version_mismatch` already collapses.
-
-**Consequence for R2:** the confusion between rows 7-9 and 22-23 is expected, and it is a
-vocabulary limitation, not a detector bug. Roy should decide before the first metrics run
-whether to (a) accept it and report both types under one line, (b) label wrong-year as
-`needs_check` + `[]` and let `version_mismatch` mean only the preprint case, or (c) raise
-adding a `year_mismatch` indicator — which needs all three owners present, since the
-indicator list is a closed vocabulary frozen at Sync 1. **Option (b) is the cheapest and
-is what I would pick**, but it is Roy's call and it changes rows 7-9 of the worklist.
+| `unresolvable` | The year is being used as a matching key rather than a comparison signal, so shifting it prevented resolution entirely. Means the resolver is querying on year; it should query on title/DOI and compare year afterwards. |
 
 ## 4. Mangled author list
 
@@ -199,12 +271,23 @@ changes who the first author is.
 different plausible surname from the field. Keep the title exact. **Inject on a reference
 with no DOI.**
 
-**Expected:** `needs_check` + `[]`.
+**Expected:** `needs_check` + `[]`. **Ruled**, as originally recommended, including the
+DOI-less injection constraint.
 
-Title similarity stays strong, `author_overlap` drops below `author_strong` (0.60), so the
-"strong title + year ok + (doi or authors agree)" path to `verified` is not available and
-it falls through to `needs_check`. **No indicator exists for an author mismatch**, so the
-set is empty — the status is the only signal this defect produces.
+### The P5 mapping walk that gets there
+
+1. `resolved` is null? **No** — the work resolves on its title. Not `unresolvable`.
+2. `retracted` or `doi_mismatch` set? **No.** Not `conflict` by that branch.
+3. Strong title **and** year ok **and** (DOI or authors agree) → `verified`?
+   `title_similarity ≥ 0.92` ✓, year ok ✓, but there is no DOI (by the injection
+   constraint) and `author_overlap < author_strong` (0.60) ✗. **Branch fails.**
+4. Weak title **and** no author overlap → `conflict`? Title is *strong*, not weak.
+   **Branch does not apply.** This step is the one that keeps a perfect-title reference off
+   an accusation.
+5. `else` → **`needs_check`.** ✓
+
+**No indicator exists for an author mismatch**, so the set is empty — the status is the only
+signal this defect produces.
 
 **Misdetection analysis:**
 
@@ -225,10 +308,16 @@ or three fields of the copy. Add an in-text citation marker for the new position
 not also an orphan. Keep the normalised title identical, since that is the key duplicate
 detection matches on.
 
-**Expected:** `needs_check` + `[duplicate_entry]` on **both** entries.
+**Expected:** `needs_check` + `[duplicate_entry]` on **both** entries. **Ruled**, as
+originally recommended.
 
-**One injection, two labels.** Both rows go in the label file; the recall denominator
-counts the injection once. This is the sole reason the 21 and 23 counts differ.
+Why not `verified` + `[duplicate_entry]`: divergent metadata means **at least one copy is
+wrong**, and nothing in the evidence says which. A human has to pick. `verified` would
+assert the bibliography is fine when it demonstrably is not.
+
+**One injection, two labels, one shared `defect_id`.** Both rows go in the label file; the
+recall denominator counts the id once, and the id matches **only if both rows match**. This
+is the sole reason the 21 and 23 counts differ.
 
 **Misdetection analysis:**
 
@@ -237,7 +326,8 @@ counts the injection once. This is the sole reason the 21 and 23 counts differ.
 | Indicator on only one of the pair | Duplicate detection is comparing each entry only against *earlier* entries, so the first copy never learns about the second. The scan is not symmetric. Easy fix, easy to miss. |
 | Neither entry flagged | Title normalisation for duplicate detection is too strict, and the divergent metadata pushed the two normalised titles apart. Duplicate detection needs a *looser* normaliser than registry matching — that they share one is the likely cause. |
 | `conflict` on either | The divergence is being read as a mismatch against the registry rather than against the sibling entry. Means duplicate detection and record matching are entangled. |
-| `verified` + `[duplicate_entry]` | Arguably reasonable — both copies resolve to a real work, and the duplication is a bibliography-hygiene problem. Contradicts this label; see the ambiguity list. Decide once, not per paper. |
+| `verified` + `[duplicate_entry]` | **Ruled out.** Both copies do resolve, but divergent metadata means one of them is wrong and the evidence cannot say which — that is precisely a `needs_check`. If the pipeline produces this, it is treating duplication as cosmetic. |
+| Both rows flagged but one status differs | The `defect_id` does not match, because an id matches only when all its rows do. Means duplicate detection is symmetric but the two copies are being classified independently on their own divergent metadata — which is correct behaviour for a classifier and wrong for a duplicate pair. Worth discussing rather than patching. |
 
 ## 6. Orphan citation
 
@@ -247,11 +337,21 @@ text. Common in real papers after a round of edits.
 **How to inject:** pick an existing, correct reference and delete every in-text citation
 marker pointing at it. Change nothing about the reference itself.
 
-**Expected:** `verified` + `[orphan]`.
+**Expected:** `verified` + `[orphan]`. **Ruled**, as originally recommended.
 
 The work exists and the record matches, so the citation is `verified`; being uncited is a
-hygiene observation recorded as an indicator, not a doubt about the work. Note that P5's
-status mapping does not mention orphan at all — see the ambiguity list.
+hygiene observation recorded as an indicator, not a doubt about the work.
+
+**`orphan` is derived from the claim map, not from resolution.** It comes from
+`Reference.cited_by_claims` being empty, which is independent of whether the reference
+resolved — so it can co-occur with **any** of the four statuses. An orphaned reference that
+also has a swapped DOI would be `conflict` + `[doi_mismatch, orphan]`.
+
+That is exactly why the corpus injects it on a reference that **otherwise resolves clean**:
+it isolates the indicator, so the label is `verified` + `[orphan]` with nothing else in
+play, and a mismatch can only mean the orphan detection itself is wrong. P5's status mapping
+does not mention orphan at all, and under this ruling it does not need to — orphan never
+changes a status, it only annotates one.
 
 **Misdetection analysis:**
 
@@ -283,8 +383,9 @@ its **real DOI**, and cite it once in the body text.
 > file. Retraction data changes; a flag that was absent last month may be present now, and
 > a record can be corrected.
 
-**Expected:** `conflict` + `[retracted]`. Per P5's mapping, `retracted → conflict`, and
-A1's prompt rules independently require retracted to be at least `conflict`.
+**Expected:** `conflict` + `[retracted]`. Unchanged and unambiguous. Per P5's mapping,
+`retracted → conflict`, and A1's prompt rules independently require retracted to be at
+least `conflict`.
 
 **Misdetection analysis:**
 
@@ -305,11 +406,40 @@ copy-paste.
 the title mid-word, and remove the punctuation that separates fields. Leave enough that a
 human can tell something was meant to be there.
 
-**Expected:** `unresolvable` + `[malformed]`.
+**Expected:** `unresolvable` + `[malformed]`. **Ruled.**
 
-`malformed` is set by P2 when schema validation of the extraction fails, and carried
-forward by P5. With no usable fields there is nothing to resolve, so `unresolvable`. See
-the ambiguity list — `needs_check` is also arguable here.
+`malformed` is set by P2 when schema validation of the extraction fails, and carried forward
+by P5. With no usable fields there is nothing to resolve, so `unresolvable`.
+
+### The plan does not contradict itself here
+
+The first pass read P5's *"no resolved → unresolvable"* and A1's *"parse noise lowers
+confidence toward needs_check, never toward conflict"* as a contradiction. They are not in
+conflict, because **they govern different things**:
+
+- **P5's line governs STATUS, derived from evidence.** No resolved record → `unresolvable`.
+- **A1's line governs CONFIDENCE DIRECTION.** "Never toward conflict" *forbids escalation*
+  on the strength of parse noise. It does not *mandate* `needs_check`.
+
+A malformed entry that resolves nothing is `unresolvable` with low confidence. Both lines
+are satisfied at once.
+
+### Two real-world variants; the corpus injects only one
+
+| Situation | Status | Indicators | In the corpus? |
+|---|---|---|---|
+| **Nothing resolves** — fields too damaged to query | `unresolvable` | `[malformed]` | **Yes — inject this one** |
+| **Partly parseable and it resolves** — enough survives to find the work, but the entry is still visibly broken | `needs_check` | `[malformed]` | No — uncovered |
+
+**R1 must inject the severe variant**, so the label is unambiguous. Delete the author list
+*and* the year *and* truncate the title: leave nothing queryable. If enough survives that
+the resolver finds the work anyway, the expected status flips to `needs_check` and the
+label becomes a coin toss on how much damage was done.
+
+The partly-parseable variant is real and will occur on genuine papers. It is **deliberately
+not in the corpus**, because its outcome depends on how much of the entry survived — which
+is not something a hand-written label can pin down. Noted here so that when it shows up in
+a live run and produces `needs_check` + `[malformed]`, nobody logs it as a bug.
 
 **Misdetection analysis:**
 
@@ -317,7 +447,7 @@ the ambiguity list — `needs_check` is also arguable here.
 |---|---|
 | **The entry is missing from the ledger entirely** | A violation of P2 step 3: *extraction never drops an entry*. For R2 this is a hard join error, not a miss — a `ref_id` in the labels with nothing to score against. Check this first, because it will also shift nothing else (ids are positional, so a dropped entry re-indexes everything after it and looks like the ref_id catastrophe in FORMAT.md). |
 | `verified` | The extractor **repaired** the entry by guessing the missing fields. This is the "never guess an identifier, never normalize titles beyond whitespace" prompt rule failing, and it is serious: a model inventing plausible metadata for a damaged citation is the exact behaviour this project claims to detect in others. |
-| `needs_check` + `[malformed]` | The other defensible label. See the ambiguity list; pick one and put it in R2. |
+| `needs_check` + `[malformed]` | Enough of the entry survived for the resolver to find the work — the partly-parseable variant above. Not a pipeline bug; an **injection** that was not severe enough. Damage the entry further and re-label. |
 | `unresolvable` + `[]` | Resolution correctly failed but the `malformed` indicator was lost between P2 and P5. Means the indicator is being recomputed at P5 rather than carried from P2. |
 
 ## 9. Preprint / journal version pair — the false-alarm trap
@@ -330,7 +460,7 @@ slightly different title. Completely normal, correct scholarly practice.
 article. Cite the **preprint** version — arXiv venue, preprint year — where the registry
 will resolve to the **journal** version.
 
-**Expected:** `verified` + `[version_mismatch]`.
+**Expected:** `verified` + `[version_mismatch]`. **Ruled**, as originally recommended.
 
 ### It must NOT produce `conflict`
 
@@ -356,7 +486,24 @@ It is also on the risk register as "version-pair false alarms".
 forces a choice. `verified` + `[version_mismatch]` says what is actually true — the
 citation is sound, and here is a note about which version was cited. `needs_check` would
 put a correct citation on the human worklist, and the worklist's value is that everything
-on it is worth a human's time. See the ambiguity list.
+on it is worth a human's time.
+
+### The two traps count inside the 21
+
+`D20` and `D21` are in the recall denominator like every other injection. This works
+because recall is defined as **label agreement**, not defect detection: a trap is
+"detected" when the pipeline gets it **right**, and for a trap, right means **not** flagging
+`conflict` — it means producing `verified` + `[version_mismatch]`. No measurements are
+mixed and the plan's ≥ 19/21 target stays intact.
+
+R2 should **also** print these two as their own named row — `false-alarm on version pairs:
+0/2` or similar. The aggregate answers "how much of the corpus did we get right"; the named
+row answers "did we avoid the specific false alarm that destroys a reviewer's trust". The
+second is a demo beat and should be readable without arithmetic. Both, not either.
+
+A trap must also **not appear in the top-3 worklist**: it is `verified`, so its severity
+weight is `0.0` and it belongs at the bottom of the ordering. R2 can assert that from these
+labels with no new field — see `FORMAT.md`.
 
 **Misdetection analysis:**
 
@@ -373,10 +520,22 @@ on it is worth a human's time. See the ambiguity list.
 
 One paper, **completely untouched.** Zero injections, every label `injected: false`.
 
+Its label file is the one with `"control": true`. **R2 must read that field, not infer the
+control** from "every label is `injected: false`" — that inference breaks the moment a
+spiked paper is committed before its labels are written.
+
 Its whole job is R2's release-blocking check: on a paper with nothing wrong with it, the
 number of false accusations must be **zero**. A single injected defect in the control makes
 that check unusable, so the control is committed unmodified and diffed against its original
 in `eval/corpus/originals/`.
+
+**What counts, per ruling 9.** A *false accusation* is exactly two things, and both are hard
+FAIL: `conflict` on any `injected: false` reference in any paper, and any `banned_terms` hit
+anywhere in any output text. A `needs_check` on a clean reference is a *false alarm* —
+tracked, reported, non-blocking — because `needs_check` means "a human should look at this",
+and a gate that fires on over-caution punishes the tool for the one behaviour the project
+actually wants. `unresolvable` on a clean reference is neither. Full definitions in
+[`eval/golden/FORMAT.md`](../eval/golden/FORMAT.md#false-accusation-vs-false-alarm).
 
 Two notes for R1:
 
@@ -384,6 +543,9 @@ Two notes for R1:
   will not resolve. Those get `expected_status: unresolvable`, `injected: false`, and a
   one-line reason recorded below. They are not accusations and must not count against the
   zero-accusation check.
+- **Each of the three spiked papers needs at least one too** — not just the control. See
+  section 2: without a genuine `unresolvable` in the same paper as the hallucinated
+  references, precision on `unresolvable` is unmeasurable.
 - **Pick a control in the same field and of similar length** to the three spiked papers. A
   control with five references proves very little.
 
@@ -405,18 +567,28 @@ Fill at R1, before writing the labels for rows 18-19.
 
 ## Handoff notes for Roy
 
-Everything above is a specification written without the papers in hand. Four things need
-your judgement and cannot be settled from here:
+**All nine ambiguities from the first pass are now ruled on**, and every expected outcome in
+this file is a decision rather than a proposal. The rulings and their reasoning are
+tabulated at the end of
+[`eval/golden/FORMAT.md`](../eval/golden/FORMAT.md#rulings).
 
-1. **The wrong-year / version-pair indicator collision** (section 3). My recommendation is
-   option (b) — label wrong-year as `needs_check` + `[]` and reserve `version_mismatch` for
-   the preprint case. That changes rows 7-9. Your call, but make it before the first
-   metrics run.
-2. **The `needs_check` vs `unresolvable` choice for malformed entries** (section 8).
-3. **Whether the two version-pair traps count inside the 21** (section 9). Their correct
-   outcome is `verified`, which is not a "detection", so including them in a recall
-   denominator mixes two different measurements.
-4. **Paper selection itself.** Nothing here assumes a field, a venue, or a citation style,
-   and section 6's orphan diagnostic depends on knowing which style your papers use.
+Three things still need a person rather than a document:
 
-The full ambiguity list, including the items above, is in the B3 PR description.
+1. **Raise the P5 constraint at Sync 1** (section 3, *A promise the corpus makes to P5 step
+   2*). `version_mismatch` must require venue divergence, not year alone, or all three
+   wrong-year defects score as misses on a correct classification. There is a note there
+   recommending the categorical preprint-vs-journal test over a venue-string comparison,
+   because there is no venue threshold in `config.yaml` and venue strings are the least
+   normalised field in a bibliography. That recommendation is Ritik's, and P5 is Ritik's
+   module — but the corpus depends on the outcome, so you should be in the room.
+
+2. **Paper selection.** Nothing here assumes a field, a venue, or a citation style. Two
+   places where it matters: section 6's orphan diagnostic depends on knowing whether your
+   papers use numeric or author-year citations, and every spiked paper needs at least one
+   genuinely unresolvable reference, which constrains the choice.
+
+3. **Verify the retracted DOIs against OpenAlex before writing labels for `D16` and
+   `D17`**, and record the date in the table above. Retraction data changes.
+
+Everything else — the format, the 21 `defect_id`s, the expected outcomes, the injection
+methods — is settled and ready to execute against.

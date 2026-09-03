@@ -13,6 +13,11 @@ This is a *specification*, not data. No real labels exist yet — that is R1, an
 start until the corpus papers are chosen. `EXAMPLE.json` in this directory is a fictional
 document that exercises the whole schema.
 
+**The nine ambiguities this format raised on its first pass have all been ruled on** by
+Ritik. They are recorded in *Rulings* at the end of this file, and each one is encoded in
+the schema and rules above it. Nothing in this format is now left for R2 to decide
+silently.
+
 > Ground truth for everything below is the Module Implementation Plan, R1 and R2 cards in
 > Section 6. The plan lands in the repo at `docs/module_implementation_plan.pdf` when B0
 > (merge-queue #1) merges; until then, ask Ritik for a copy.
@@ -29,8 +34,9 @@ including the clean control.
 ### The one exemption: `EXAMPLE.json`
 
 `eval/golden/EXAMPLE.json` is a **specimen, not a corpus label file.** It describes a
-fictional document, its stem deliberately does not match its `document` field, and no
-`example_paper` will ever exist in `eval/corpus/`.
+fictional document, its stem deliberately does not match its `document` field, no
+`example_paper` will ever exist in `eval/corpus/`, and its `source` block is illustrative
+rather than a real provenance record.
 
 **R2 must skip it by name.** R1's card globs `eval/golden/*.json`, so a harness that does
 the obvious thing will pick the specimen up, look for a ledger for `example_paper`, find
@@ -50,38 +56,78 @@ unhandled is not.
 ```json
 {
   "document": "paper1",
+  "control": false,
+  "source": {
+    "license": "CC-BY",
+    "origin_url": "https://arxiv.org/abs/0000.00000",
+    "origin_file": "paper1_original.pdf"
+  },
   "labels": [
     {
       "ref_id": "R03",
+      "defect_id": "D01",
       "expected_status": "conflict",
       "expected_indicators": ["doi_mismatch"],
       "defect": "DOI swapped with the DOI of an unrelated journal article",
-      "injected": true
+      "injected": true,
+      "verified_by": "arsha",
+      "verified_on": "2026-09-03"
     }
   ]
 }
 ```
 
-Two top-level fields, five fields per label. Nothing else is permitted — an unrecognised
-key should make R2 fail loudly rather than ignore it, because a typo'd key name is
-indistinguishable from a missing label otherwise.
+Four top-level fields, three inside `source`, eight per label. **Nothing else is
+permitted** — an unrecognised key should make R2 fail loudly rather than ignore it,
+because a typo'd key name is indistinguishable from a missing label otherwise.
+
+Four fields beyond the plan's minimum example were added deliberately. The plan's example
+is a minimum shape and specifying this format *is* B3's job; each addition exists to stop
+R2 inferring something from the `defect` free text, which this file says is never scored.
+They are `defect_id`, `control`, `source`, and the `verified_by`/`verified_on` pair.
 
 ### Top level
 
 | Field | Type | Required | Allowed values | What R2 does with it |
 |-------|------|----------|----------------|----------------------|
-| `document` | string | **yes** | Any short identifier without spaces or path separators. Must match the filename stem. | Pairs this label file with a pipeline `Ledger`. **See the open question below** — whether it matches `Ledger.document_name` or the corpus PDF's filename is not yet settled, and R2 must pick one explicitly. |
+| `document` | string | **yes** | Short identifier, no spaces or path separators. Must match the filename stem. | Pairs this label file with a pipeline `Ledger`, by `Ledger.document_name`. See *Rulings*. |
+| `control` | boolean | **yes** | `true` on the clean control file, `false` on the three spiked ones. | Selects the file for the **release-blocking** zero-false-accusation check. R2 must read this field, **never infer the control** from "every label is `injected: false`" — that inference breaks the moment a spiked paper is committed before its labels are written. |
+| `source` | object | **yes** | Exactly `license`, `origin_url`, `origin_file`. | Makes R1's *"no copyrighted-restricted or student material"* DoD box **verifiable from the tree** rather than merely asserted in a PR. R2 should print the licence of every scored document in its report header, next to the model names. |
 | `labels` | array of objects | **yes** | May not be empty. | The scoring set. R2 iterates it and joins each entry to a `LedgerEntry` by `ref_id`. |
+
+### Inside `source`
+
+| Field | Type | Required | Allowed values | What R2 does with it |
+|-------|------|----------|----------------|----------------------|
+| `license` | string | **yes** | Exactly one of `CC-BY`, `CC-BY-SA`, `CC0`, `PMC-OA`, `arXiv-perpetual`. | Printed in the report header. A value outside this set is a hard error — it means a paper entered the corpus without its licence being checked, which is the thing the field exists to prevent. |
+| `origin_url` | string | **yes** | The canonical URL the paper was obtained from. | Report text and audit only. Never scored. |
+| `origin_file` | string | **yes** | Filename under `eval/corpus/originals/`, no path. | Lets anyone diff the spiked PDF against its untouched original, which is R1 step 3's whole purpose. R2 may check the file exists; it does not read it. |
 
 ### Per label
 
 | Field | Type | Required | Allowed values | What R2 does with it |
 |-------|------|----------|----------------|----------------------|
-| `ref_id` | string | **yes** | `R` + zero-padded position. See *ref_id assignment* below. | The join key onto `LedgerEntry.reference.ref_id`. Compared as an **opaque string** — `"R03"` and `"R3"` are different ids, not the same one. A `ref_id` in the labels with no matching ledger entry, or vice versa, is a hard error, not a miss. |
+| `ref_id` | string | **yes** | `R` + zero-padded position. See *ref_id assignment*. | The join key onto `LedgerEntry.reference.ref_id`. Compared as an **opaque string** — `"R03"` and `"R3"` are different ids. A `ref_id` in the labels with no matching ledger entry, or vice versa, is a hard error, not a miss. |
+| `defect_id` | string | **yes when `injected` is `true`**; omit when `false` | `D` + two digits, e.g. `D07`. **Globally unique across the whole corpus**, not per file. Assigned in `docs/defect_catalog.md` before R1 starts. | **The recall denominator.** Injections = count of distinct `defect_id`s (21). Label rows = count of `injected: true` entries (23). Recall is computed over `defect_id`s, never over rows. See the matching rule below. |
 | `expected_status` | string | **yes** | Exactly one of `verified`, `needs_check`, `conflict`, `unresolvable`. | Compared by **string equality** to `Verdict.status`. Feeds the confusion matrix and per-status precision/recall. |
 | `expected_indicators` | array of strings | **yes** (may be `[]`) | Zero or more of `retracted`, `version_mismatch`, `doi_mismatch`, `duplicate_entry`, `orphan`, `malformed`. No duplicates. | Compared as a **set** to `MatchEvidence.indicators`. See below. |
 | `defect` | string | **yes when `injected` is `true`**; omit when `false` | Free text, one line, human-readable. | **Never scored.** It appears in R2's report next to each miss, and it is what a human reads at 2am to work out whether the label or the pipeline is wrong. Also the demo cheat-sheet text. |
-| `injected` | boolean | **yes** | `true` or `false` | Partitions the corpus. `false` entries on the clean control drive the release-blocking zero-false-accusation check. **Note:** `true` entries are *not* the recall denominator one-for-one — the target ≥ 19/21 counts **injections**, and one duplicate-entry injection produces two `injected: true` labels. 21 injections, 23 labelled rows. See `docs/defect_catalog.md`. |
+| `injected` | boolean | **yes** | `true` or `false` | Partitions the corpus. `false` entries drive the false-accusation and false-alarm metrics. |
+| `verified_by` | string | no | A teammate's name, lower case. | Audit trail for R1's test plan — *"a teammate spot-verifies 5 random labels against the PDFs"*. Never scored. Optional because most labels will never be spot-checked; present so the ones that were are recoverable months later. |
+| `verified_on` | string | no | ISO date, `YYYY-MM-DD`. | As above. If `verified_by` is present, this should be too. |
+
+### The `defect_id` matching rule
+
+**A `defect_id` counts as matched only when ALL of its rows match.**
+
+Most defects produce one row, so this is usually trivial. It matters for duplicate-entry
+defects, which are one injection producing two labelled rows: if the pipeline flags one
+copy and not the other, that `defect_id` is **not** detected. Half-detecting a duplicate is
+not half a detection — a reviewer shown only one of the two copies cannot see that there is
+a duplication at all.
+
+This rule is what makes 21 and 23 reconcile without anyone string-matching the `defect`
+free text.
 
 ## `expected_indicators` is a SET, not a sequence
 
@@ -153,6 +199,13 @@ impossible turns a correct pipeline into a failing metric, and the first instinc
 to "fix" the pipeline. Expect a handful per paper; a well-chosen arXiv/PMC paper in a
 computational field will have fewer.
 
+**Each spiked paper must retain at least one of these** — a genuine `unresolvable` with
+`injected: false`. A hallucinated reference produces `unresolvable` + `[]`, which is
+output-identical to a legitimate one, so without a real unresolvable in the same paper
+there is no negative case and **precision on `unresolvable` cannot be measured at all**.
+If a chosen paper happens to have none, that is a reason to pick a different paper, not to
+skip the requirement.
+
 ## `ref_id` assignment — the one coupling point
 
 **Format:** `R` followed by the reference's **1-based position in the bibliography as
@@ -202,40 +255,146 @@ If `R03`'s raw text is not the reference whose `defect` says "DOI swapped", the 
 misaligned — fix the labels or the splitter, and do not touch the classifier. A constant
 offset across the whole file confirms it.
 
+## Recall, precisely
+
+**Recall = (number of `defect_id`s whose every row's observed `(status, indicators)`
+matches its label) / 21.**
+
+The plan's target is `≥ 19/21`.
+
+Three things this definition settles:
+
+- **The two version-pair traps are inside the 21.** A trap is *detected* when the pipeline
+  gets it **right**, and for a trap, right means **not** flagging `conflict` — it means
+  producing `verified` + `[version_mismatch]`. Under this definition a trap is scored
+  exactly like every other injection: label match or no match. No measurements are mixed,
+  and the denominator stays 21.
+- **Recall is over injections, not rows.** 21, not 23.
+- **Indicator comparison is exact-set, not subset.** An extra indicator is a mismatch. This
+  is what catches the "right status, wrong reason" failure — for example a retracted paper
+  correctly landing on `conflict` because of a title mismatch, while the retraction was
+  never actually read.
+
+### R2 must also print the traps as their own row
+
+Alongside the aggregate, R2 should emit a separate named metric for the two
+version-pair `defect_id`s — something like `false-alarm on version pairs: 0/2`.
+
+They are in the recall denominator *and* on their own line, and there is no contradiction
+in that: the aggregate answers "how much of the corpus did we get right", and the named row
+answers "did we avoid the specific false alarm that destroys a reviewer's trust". The second
+question is a demo beat and deserves to be visible without arithmetic.
+
+## False accusation vs false alarm
+
+R2 implements the release gate from this file, so both definitions live here.
+
+### False accusation — RELEASE-BLOCKING, hard FAIL
+
+Exactly two things, and nothing else:
+
+1. **`status == conflict` on any reference with `injected: false`, in any paper** — not
+   only the clean control. A conflict asserted against a reference nobody touched is the
+   tool making an accusation the evidence cannot support.
+2. **Any `banned_terms` hit anywhere in any output text** — rationales, checks, summaries,
+   exported CSV, dashboard copy. The word list is in `config.yaml`.
+
+Either one fails the build. The plan's risk register rates accusatory wording as the risk
+that *kills the pitch*, and these are its two measurable forms.
+
+### False alarm — a separate, non-blocking metric
+
+**`status == needs_check` on a reference with `injected: false`.**
+
+Report it, track it, do not block on it. `needs_check` means "a human should look at this",
+which on a clean reference is over-caution, not an accusation — and a gate that fires on
+over-caution punishes the tool for the one behaviour the project actually wants. Conflating
+the two would make the release gate unusable within a day.
+
+`unresolvable` on an `injected: false` reference is **neither**. It is the honest correct
+answer for a book, a thesis or a standard, and it is expected — see *the documented
+exception* below.
+
+## Two things this format deliberately does not express
+
+Both were considered and both are **accepted as gaps**, not oversights. Recorded here so
+nobody tries to shoehorn them in later.
+
+### 1. Document-level defects stay out of the golden-label system
+
+P1's card has a fallback path for a paper with no `References` heading — treat the last 15%
+of pages as the reference region. Testing it needs a PDF with the heading removed, which is
+a defect with **no `ref_id` to attach to**, and injecting it would re-index every other
+label in the file.
+
+It belongs in a **separate fixture PDF under `tests/`, owned by P1**, not in
+`eval/corpus/`. Nothing in this format will ever describe it.
+
+### 2. `confidence`, `priority` and `checks[]` stay unlabelled
+
+No expected-confidence, expected-priority or expected-checks field. Labelling a confidence
+number would pin ground truth to a scale nobody has calibrated.
+
+**But the worklist is still assertable from the labels that exist**, and it should be,
+because the top-3 worklist is a demo beat and nothing else validates its ordering. Two
+checks R2 can run today with no new field:
+
+- **Every reference in the top-3 worklist must have `injected: true`.** A clean reference
+  ranking in the top three means the priority formula is ordering by something other than
+  evidence.
+- **No version-pair trap may appear in the top-3 worklist.** A trap is `verified` with
+  severity `0.0`, so it should sit at the bottom of the ordering. A trap surfacing in the
+  worklist is the false alarm arriving through the ranking rather than through the status.
+
+These catch the failure where per-status precision and recall both pass while the ordering
+a reviewer actually looks at is wrong.
+
 ## Validation checklist for a hand-written label file
 
 Before committing a label file, check by hand:
 
 1. Filename stem equals the `document` field. (`EXAMPLE.json` is exempt — see above.)
-2. Every reference in the bibliography has exactly one label — count them.
-3. `ref_id` values run consecutively from `R01` with no gaps and no duplicates.
-4. Every `expected_status` is one of the four strings, spelled exactly, lower case.
-5. Every entry of every `expected_indicators` is one of the six strings, exactly, lower
+2. `control` is present and correct — `true` on exactly one file in the corpus.
+3. `source.license` is one of the five allowed strings; `source.origin_file` names a file
+   that exists under `eval/corpus/originals/`.
+4. Every reference in the bibliography has exactly one label — count them.
+5. `ref_id` values run consecutively from `R01` with no gaps and no duplicates.
+6. Every `expected_status` is one of the four strings, spelled exactly, lower case.
+7. Every entry of every `expected_indicators` is one of the six strings, exactly, lower
    case, with no duplicates inside a single array.
-6. Every `injected: true` label has a `defect` string; no `injected: false` label has one.
-7. The count of `injected: true` labels across all files matches the **labelled-rows**
-   total in `docs/defect_catalog.md` — currently **23**, not the 21 injection count. Each
-   duplicate-entry defect is one injection producing two labelled entries. Checking
-   against 21 will look like two missing labels.
-8. The clean control has zero `injected: true` labels.
-9. Any `unresolvable` on an `injected: false` label has a one-line reason recorded in
-   `docs/defect_catalog.md`, so it is not mistaken for an unexplained gap later.
+8. Every `injected: true` label has both a `defect` string and a `defect_id`; no
+   `injected: false` label has either.
+9. `defect_id` values are globally unique across the corpus **except** where rows share one
+   by design — currently only duplicate-entry defects, which have exactly two rows each.
+   The count of distinct `defect_id`s across all files is **21**; the count of
+   `injected: true` rows is **23**.
+10. Where `verified_by` is present, `verified_on` is too, and the date is `YYYY-MM-DD`.
+11. The clean control has zero `injected: true` labels.
+12. Any `unresolvable` on an `injected: false` label has a one-line reason recorded in
+    `docs/defect_catalog.md`, so it is not mistaken for an unexplained gap later.
+13. Each spiked paper retains **at least one** genuine `unresolvable` reference with
+    `injected: false` — see the documented exception.
 
-## Open questions R2 must answer explicitly
+## Rulings
 
-These are decisions the harness will otherwise make silently. Each needs a line in R2's
-code and a sentence in its report header.
+The nine ambiguities this format raised on its first pass, and the decisions taken. Each is
+already encoded above; this section records *why*, so a future reader does not relitigate
+them. Where a ruling matched the original recommendation, that is noted and nothing more is
+said about it.
 
-1. **What does `document` match against?** `Ledger.document_name`, or the corpus PDF's
-   filename? They will differ the moment a filename has an extension or a space. Pick one.
-2. **What counts as a false accusation?** This document assumes **`conflict` on an
-   `injected: false` reference**, and nothing else. `needs_check` on a clean reference is a
-   false *alarm* — worth a separate, non-blocking metric — but it is not an accusation, and
-   conflating them makes the release gate fire on the tool being appropriately cautious.
-3. **Is a version-pair trap part of the 21?** Its correct outcome is not a detection, so
-   "recall" over a denominator that includes it is measuring two different things. See
-   `docs/defect_catalog.md`.
-4. **Does a duplicate-entry defect produce one label or two?** One injection creates two
-   ledger entries that both carry the indicator. See `docs/defect_catalog.md`.
-5. **Exact-set or subset matching on indicators?** This document specifies exact. Confirm
-   before the first metrics run, because changing it later moves every number.
+| # | Question | Ruling | Note |
+|---|----------|--------|------|
+| 1 | Wrong year: which status, which indicator? | **`needs_check` + `[]`** | Differs from the first draft, which had `[version_mismatch]`. Carries a constraint on P5 — see `docs/defect_catalog.md`, *A promise the corpus makes to P5 step 2*. |
+| 2 | Malformed: `unresolvable` or `needs_check`? | **`unresolvable` + `[malformed]`** for the corpus | The plan does **not** contradict itself. P5's line governs *status from evidence*; A1's line governs *confidence direction*. "Never toward conflict" forbids escalation — it does not mandate `needs_check`. Both real-world variants documented in the catalog; R1 injects the severe one. |
+| 3 | Version pair: `verified` or `needs_check`? | **`verified` + `[version_mismatch]`** | As recommended. A worklist is only valuable if everything on it deserves a human's time. |
+| 4 | Do the version-pair traps count inside the 21? | **Yes** | Resolved by redefining recall as label agreement rather than defect detection — see *Recall, precisely*. A trap is detected when the pipeline gets it right, which for a trap means not flagging `conflict`. |
+| 5 | Mangled author list: which status, which indicator? | **`needs_check` + `[]`** | As recommended, including the DOI-less injection constraint. |
+| 6 | Duplicate entry: `verified` or `needs_check`, one row or two? | **`needs_check` + `[duplicate_entry]` on both rows** | As recommended. Divergent metadata means at least one copy is wrong and nothing in the evidence says which, so a human has to pick. `verified` would assert the bibliography is fine when it demonstrably is not. |
+| 7 | Orphan: which status? | **`verified` + `[orphan]`** | As recommended. `orphan` is derived from the **claim map**, not from resolution, so it can co-occur with any status; the corpus injects it on a reference that otherwise resolves clean, which is what makes the label unambiguous. |
+| 8 | Hallucinated reference | **`unresolvable` + `[]`** | As recommended. Output-identical to a legitimately unresolvable reference, so each spiked paper must retain at least one genuine `unresolvable` with `injected: false` — otherwise precision on `unresolvable` is unmeasurable. Now checklist item 13. |
+| 9 | What is a false accusation? | **`conflict` on `injected: false`, plus any banned-term hit** | As recommended, with the banned-term clause added. `needs_check` on a clean reference is a false *alarm*: separate, non-blocking. See *False accusation vs false alarm*. |
+
+Two smaller questions from the first pass, also settled:
+
+- **`document` matches `Ledger.document_name`**, not the PDF filename.
+- **Indicator matching is exact-set**, not subset.
