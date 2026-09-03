@@ -45,3 +45,33 @@ BLOCKS ME AT: 2:30, when the judge starts writing real rationales.
 
 ---
 
+
+## 0:15 — A1 READY
+tests: 131 passed
+publishes: nothing yet
+notes: hour-zero checklist green — main @ 663db6a, check_secrets PASS, AIR gateway lists 48 models. System python here has no pytest, so every run below is ./.venv/Scripts/python.exe -m pytest, the same interpreter the 131 came from.
+next: A1 judge on the fixture, ETA 2:20
+
+## 0:20 — A1 STARTED
+tests: 131 passed
+publishes: nothing yet
+notes: branch arsha/a1-judge, built against tests/fixtures/ledger_fixture.json only — zero dependency on Ritik's lane until A3.
+next: A1 merge, ETA 2:20
+
+## 1:55 — A1 OBJECTION
+tests: 202 passed
+publishes: nothing yet
+notes: two Tier-1 shapes I would have drawn differently and did NOT change (R3) — Verdict has nowhere to put per-call latency, so A3's progress strip must carry timing outside the contract; and MatchEvidence.notes has no provenance, so the judge cannot tell a resolver note from a parser note. Both are fine for Phase 1 and both are PHASE2.
+next: A1 merge, ETA 2:20
+
+## 1:55 — REQUEST -> @ritik
+NEED: P2's gateway calls to go through client.with_options(max_retries=0), the same one line src/judge/agent.py now uses.
+WHY: the OpenAI SDK retries twice by default underneath us, so on top of llm.max_retries that is up to six requests per item — I measured 182 seconds of wall clock on ONE reference before it reached the gateway-error rung, and it also makes your per-stage progress timing uninterpretable.
+UNBLOCKED MEANWHILE BY: nothing — A1 already does this in its own file, so this is a heads-up for your lane rather than a blocker for mine.
+BLOCKS ME AT: never. Measurement and full reasoning: docs/decisions.md D-202.
+
+## 1:56 — A1 OBJECTION
+tests: 202 passed
+publishes: nothing yet
+notes: the AIR gateway is intermittently unreachable today and it is not us — three consecutive live-test runs with nothing changed went SKIPPED (APITimeoutError, 21.6s), passed (1.78s), passed (1.75s). When it answers, the judge answers in under two seconds. D-203 makes the live test skip rather than fail on that so nobody's pytest goes red because of the VPN; before the demo, run pytest tests/test_judge.py::test_live_air_smoke -rs and require passed, not skipped.
+next: A1 merge, ETA 2:20

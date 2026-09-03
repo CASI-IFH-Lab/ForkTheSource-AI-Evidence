@@ -2085,3 +2085,135 @@ and exactly wrong for a working choice inside one's own lane — logging those w
 every revision an owner makes into a decision reversal, which raises the cost of improving
 your own work. **The test is not "was this a choice" but "does someone else's unwritten code
 depend on it".** All four of these fail that test; all ten of D-022 to D-031 pass it.
+
+---
+
+# Arsha's range - D-200 to D-299
+
+Appended at the end of the file, per **§8 of `00_TEAM_PLAN_SHARED.md`** ("Append at the end
+of the file, in your own range"). The file header says newest-first; the team plan says
+append. The plan wins, and nothing above this line is reordered, renumbered or edited.
+
+---
+
+## D-200 — `gate.py` is three code checks and no model call; D-004 is CLOSED
+
+**Date** 2026-09-03 · **Decided by** Arsha (A1) · **Status**: active — **closes D-004**
+
+**Affects**: A1 `src/judge/gate.py`, `config.yaml`, `tests/test_config.py`,
+`docs/config_reference.md`, R2's release gate.
+
+**Decision**: the folded-in critic is code, not a model. `models.critic` and
+`critic_temperature` stay out of `config.yaml`, `tests/test_config.py` keeps pinning their
+absence, and `docs/config_reference.md` gains no rows. D-004 is closed as Ritik wrote it,
+not overturned.
+
+**Why**: all three checks are decidable by inspection — one verdict per `ref_id`, the status
+counts summing to the entry total, and a case-insensitive scan of every rationale and every
+check against `settings.banned_terms()`. A model adds a second thing that can fail, a second
+round-trip on the critical path, and an output that would itself need gating; and it would
+make the accusation guard non-deterministic, which is the one property the guard cannot
+lose. The rejected alternative — an LLM check that the rationale is supported by the
+evidence — is a genuinely good Phase 2 idea and belongs there, behind a config key added
+deliberately with a failing test pointing at this entry, exactly as D-004 designed.
+
+**Consequence**: nobody adds a critic key. **Roy**: `gate_batch()` is free and offline, so
+R2 may call it on any ledger with no key and no network. The banned-term list is read from
+`settings.banned_terms()` on every call and never cached inside `src/judge/`, so your
+release gate and my gate cannot drift (D-019).
+
+---
+
+## D-201 — Two prompt rules are also code post-conditions: the retraction floor and the parse-noise ceiling
+
+**Date** 2026-09-03 · **Decided by** Arsha (A1) · **Status**: active
+
+**Affects**: A1 `src/judge/agent.py`, P5's `rule_based_status` when injected as
+`fallback_fn`, R2's recall numbers, the golden labels in D-012 and D-018.
+
+**Decision**: every verdict leaving `judge_reference` — model-produced OR fallback-produced
+— passes through `apply_evidence_rules(verdict, ev)`, which applies exactly two corrections:
+
+- **Retraction floor.** `retracted` in `ev.indicators` and a status below `conflict` → the
+  status becomes `conflict`, and one neutral clause naming why is appended to the rationale.
+- **Parse-noise ceiling.** `ev.indicators == {malformed}` — malformed and nothing else — and
+  status `conflict` → the status becomes `unresolvable` when `ev.resolved is None`, else
+  `needs_check`; confidence is capped at 0.5 and one neutral clause is appended.
+
+Nothing else is corrected. With any second indicator present, the conflict stands untouched.
+
+**Why**: the plan puts both rules in the prompt, and a prompt is a request. These two are the
+ones we cannot afford to have politely ignored. A retraction is a fact the provider
+published, so raising a status on it is never an accusation — it is the one escalation that
+carries no risk. The ceiling is the mirror image and the more important half: when the only
+signal is that our own parser could not read the entry, `conflict` is precisely the false
+alarm this project exists to avoid ("an unreadable reference is not a suspicious one"). The
+ceiling lands on `unresolvable` rather than `needs_check` when nothing resolved, so that a
+model over-reading parse noise still agrees with the golden label in **D-012**. Rejected:
+enforcing in the prompt alone (unverifiable offline, and it fails silently on the day a model
+drifts), and enforcing on every indicator (that would be a second classifier living inside
+the judge, which is P5's job and not A1's).
+
+**Consequence**: **Ritik** — if `rule_based_status` ever returns `verified` on retracted
+evidence, A3's wiring will raise it to `conflict` on the way out; that is intended, and your
+rule does not need to duplicate it. **Roy** — a corpus entry carrying `malformed` AND a
+second indicator is NOT subject to the ceiling, so a version-mismatch-plus-malformed trap
+still scores as whatever the judge says. Both rules are named tests in `tests/test_judge.py`.
+
+---
+
+## D-202 — `llm.max_retries` is the whole retry policy: the OpenAI SDK's own retry layer is switched off
+
+**Date** 2026-09-03 · **Decided by** Arsha (A1) · **Status**: active
+
+**Affects**: A1 `src/judge/agent.py`; anything else in this repo that calls the gateway
+through `src.llm.get_client()` — P2's extractor in particular.
+
+**Decision**: `src/judge/agent.py` sends every request through
+`client.with_options(max_retries=0)`. The retry count in `config.yaml` under
+`llm.max_retries` is then the only retry policy in the system, and the ladder in `agent.py`
+is the only place that implements it.
+
+**Why**: measured, not theorised. The OpenAI SDK retries twice by default, underneath the
+caller and invisibly. Layered on the ladder's own retry that is up to **six** requests for
+one reference, and against the AIR gateway in its state today — which timed out and dropped
+connections repeatedly during A1 — one reference took **182 seconds** of wall clock to reach
+our "gateway error" rung while the SDK quietly re-sent it three times. On thirty references
+that is the whole demo. A configured retry count that describes half the real behaviour is
+worse than no configured retry count at all.
+
+**Consequence**: **Ritik** — P2 calls the same gateway through the same client and inherits
+the same hidden layer; if `extract_references` ever appears to hang, this is why, and the
+same one-line `with_options(max_retries=0)` fixes it. Your per-stage progress callback also
+becomes readable, because a stage's elapsed time is now one request per attempt rather than
+three. `config.yaml` is untouched: this makes the existing key mean what it already says, it
+does not add one.
+
+---
+
+## D-203 — The live AIR smoke test SKIPS on an unreachable gateway and FAILS on a bad answer
+
+**Date** 2026-09-03 · **Decided by** Arsha (A1) · **Status**: active
+
+**Affects**: `tests/test_judge.py`, and the "pytest is green before you self-merge" rule in
+§5 R6 of the team plan.
+
+**Decision**: `test_live_air_smoke` first probes the gateway with a 20-second reachability
+call. `APIConnectionError` / `APITimeoutError` → `pytest.skip`. A non-2xx status, or a
+verdict that comes back on a fallback rung after the probe succeeded → `pytest.fail`. It
+stays skipped entirely when `AIR_API_KEY` / `AIR_BASE_URL` are absent, so CI and Roy's
+machine are unaffected.
+
+**Why**: the AIR gateway is intermittently unreachable today — observed live during A1: one
+run skipped on a timeout and the next two passed in 1.8s each, with nothing changed in
+between. A live test that goes red on that turns "pytest is green" into a coin flip, and R6
+makes every merge depend on it. The distinction preserves what the test is actually for: it
+still fails loudly if the gateway answers and our ladder mishandles the answer, which is the
+only failure mode a test can meaningfully catch. Rejected: deleting the live test (then
+nothing ever exercises the real prompt), and retrying until it passes (that hides exactly the
+gateway flakiness the demo needs to know about).
+
+**Consequence**: **everyone** — a `SKIPPED ... AIR gateway unreachable` line in your pytest
+output means the VPN or the gateway, never the judge. Before the demo, run
+`pytest tests/test_judge.py::test_live_air_smoke -rs` and require **passed**, not skipped: a
+skip there is the rehearsal telling you the live beat will degrade on stage.
