@@ -2,6 +2,31 @@
 
 **Read `00_TEAM_PLAN_SHARED.md` first. This document assumes it.**
 
+> ## CURRENT STATE
+>
+> **R1 is MERGED** (`b30f870`, PR #16) — spiked corpus, clean control and golden labels
+> are on `main`, so REPLAN §0's "cut to FOUR defects by T+0:15" decision rule is spent and
+> no longer applies. **Your next module is R2-MINIMAL.**
+>
+> Facts your doc anticipated that are now live:
+>
+> * **`ref_id` format CONFIRMED** as `R01`.. two-digit, per `FORMAT.md`. The 2:30
+>   alignment-check snippet in your doc works **right now** — your spiked PDF exists, so
+>   run it before R2, not during it. Note that P5 and P6 are not merged yet, so there is
+>   no end-to-end ledger to align against until P6 lands; align against
+>   `extract_references` output in the meantime.
+> * `extract_references` now returns a **NamedTuple**, so unpack it:
+>   `refs, malformed = extract_references(doc)`.
+> * The **10.48550 tripwire row is live** in the resolvers (D-037), and your row is one of
+>   only **two** things covering that path.
+> * Per **D-101**, your eval must **not score the `venue` field** — status + indicators
+>   only, which your spec already says.
+>
+> **R2 is R2-MINIMAL** per REPLAN §4. **R3 is cut from Phase 1.**
+>
+> Hooks and progress blocks: you are already posting blocks in `progress/roy.md`. If
+> `bash scripts/install_hooks.sh` has not been run in this clone, run it once.
+
 Paste both documents into your agent at session start. For each task say:
 *"Generate the prompt for R1 from my document, then execute it."*
 

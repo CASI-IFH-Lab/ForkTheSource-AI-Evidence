@@ -2,6 +2,26 @@
 
 **Read `00_TEAM_PLAN_SHARED.md` first. This document assumes it.**
 
+> ## CURRENT STATE
+>
+> **A1 and A2 are both MERGED** (`ab06a80`, `9dbcd55`) — ahead of the plan this banner
+> was drafted against, and `gate.py` did NOT slip: `src.judge.gate.gate_batch` is live on
+> `main`. A2 shipped fuller than A2-MINIMAL (counters, seven-chip AIR strip, top-3
+> worklist, per-entry expanders), so REPLAN §3's minimal scope is already satisfied.
+>
+> **Your next module is A3 wiring, WITHOUT the upload zone** — and you have it correctly
+> marked blocked on P6. P5 is Ritik's next module, P6 the one after.
+>
+> `rule_based_status` — your `fallback_fn` — lands with Ritik's **P5**: watch for the
+> MERGED block and import it by name from `src.matching.rules`. `wired_judge` is still
+> yours to publish.
+>
+> **Nothing you consume changed.** The extractor's D-102 return-shape change does not
+> touch your lane.
+>
+> Hooks and progress blocks: already done — you are posting blocks in `progress/arsha.md`.
+> If `bash scripts/install_hooks.sh` has not been run in this clone, run it once.
+
 Paste both documents into your agent at session start. For each task say:
 *"Generate the prompt for A1 from my document, then execute it."*
 
