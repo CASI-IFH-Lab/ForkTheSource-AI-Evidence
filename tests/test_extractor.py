@@ -564,3 +564,12 @@ def test_live_smoke_one_entry_through_the_real_gateway(monkeypatch, tmp_path):
     assert refs[1].arxiv_id == "1409.0473"
     # And nothing was invented: neither entry prints a DOI.
     assert refs[0].doi is None and refs[1].doi is None
+
+
+def test_both_extraction_entry_points_import_from_extractor():
+    """The P2 card names these two as one public interface, and the agreed interface
+    table in scripts/update_status.py looks for both on src.ingest.extractor."""
+    from src.ingest.extractor import extract_claims as reexported
+    from src.ingest.extractor import extract_references  # noqa: F401
+
+    assert reexported is claims_mod.extract_claims
