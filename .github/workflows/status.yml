@@ -8,8 +8,17 @@
 # Two things this workflow is deliberate about:
 #
 #   * Recursion. The job commits to main, which is a push to main, which would
-#     trigger the job. The `if:` below skips any commit whose message contains
-#     [status], and this job's own commits always contain it.
+#     trigger the job. The `if:` below skips any commit whose message STARTS WITH
+#     the status marker, and this job's own commits always do.
+#
+#     It matches on the prefix rather than anywhere in the message, and that is not
+#     a style preference - the first version used `contains()` and skipped the very
+#     commit that introduced this file, because the commit body happened to mention
+#     the marker while describing this workflow. A guard that silently skips real
+#     pushes whenever somebody quotes the marker in a commit body is worse than no
+#     guard: STATUS.md goes quietly stale and everyone keeps trusting it. The bot's
+#     own commit subject is exactly "<marker> regenerate STATUS.md", so a prefix
+#     match is airtight for the case the guard actually exists for.
 #   * Failing loudly. If the repo's Actions permissions do not allow a push, this
 #     job FAILS with a red X and names the setting to change. It does not swallow
 #     the error, because "the status file is quietly six hours stale and everyone
@@ -31,7 +40,7 @@ concurrency:
 
 jobs:
   regenerate:
-    if: "!contains(github.event.head_commit.message, '[status]')"
+    if: "!startsWith(github.event.head_commit.message, '[status]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
