@@ -1,0 +1,547 @@
+{
+ "status": "ok",
+ "message-type": "work",
+ "message-version": "1.0.0",
+ "message": {
+  "indexed": {
+   "date-parts": [
+    [
+     2026,
+     9,
+     1
+    ]
+   ],
+   "date-time": "2026-09-01T18:09:12Z",
+   "timestamp": 1788286152487,
+   "version": "build-2803163510"
+  },
+  "reference-count": 34,
+  "publisher": "Public Library of Science (PLoS)",
+  "issue": "6",
+  "license": [
+   {
+    "start": {
+     "date-parts": [
+      [
+       2015,
+       6,
+       9
+      ]
+     ],
+     "date-time": "2015-06-09T00:00:00Z",
+     "timestamp": 1433808000000
+    },
+    "content-version": "vor",
+    "delay-in-days": 0,
+    "URL": "http://creativecommons.org/licenses/by/4.0/"
+   }
+  ],
+  "content-domain": {
+   "domain": [
+    "www.plosbiology.org"
+   ],
+   "crossmark-restriction": false
+  },
+  "short-container-title": [
+   "PLoS Biol"
+  ],
+  "DOI": "10.1371/journal.pbio.1002165",
+  "type": "journal-article",
+  "created": {
+   "date-parts": [
+    [
+     2015,
+     6,
+     9
+    ]
+   ],
+   "date-time": "2015-06-09T13:57:18Z",
+   "timestamp": 1433858238000
+  },
+  "page": "e1002165",
+  "update-policy": "https://doi.org/10.1371/journal.pbio.corrections_policy",
+  "source": "Crossref",
+  "is-referenced-by-count": 878,
+  "title": [
+   "The Economics of Reproducibility in Preclinical Research"
+  ],
+  "prefix": "10.1371",
+  "volume": "13",
+  "author": [
+   {
+    "given": "Leonard P.",
+    "family": "Freedman",
+    "sequence": "first",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Iain M.",
+    "family": "Cockburn",
+    "sequence": "additional",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Timothy S.",
+    "family": "Simcoe",
+    "sequence": "additional",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   }
+  ],
+  "member": "340",
+  "published-online": {
+   "date-parts": [
+    [
+     2015,
+     6,
+     9
+    ]
+   ]
+  },
+  "reference": [
+   {
+    "key": "ref1",
+    "doi-asserted-by": "crossref",
+    "first-page": "612",
+    "DOI": "10.1038/505612a",
+    "article-title": "NIH plans to enhance reproducibility",
+    "volume": "505",
+    "author": "FS Collins",
+    "year": "2014",
+    "journal-title": "Nature"
+   },
+   {
+    "key": "ref2",
+    "doi-asserted-by": "crossref",
+    "first-page": "116",
+    "DOI": "10.1161/CIRCRESAHA.114.303819",
+    "article-title": "Reproducibility in Science: improving the standard for basic and preclinical research",
+    "volume": "116",
+    "author": "CG Begley",
+    "year": "2015",
+    "journal-title": "Circ Res"
+   },
+   {
+    "key": "ref3",
+    "doi-asserted-by": "crossref",
+    "first-page": "101",
+    "DOI": "10.1016/S0140-6736(13)62329-6",
+    "article-title": "Biomedical research: increasing value, reducing waste",
+    "volume": "383",
+    "author": "MR Macleod",
+    "year": "2014",
+    "journal-title": "Lancet"
+   },
+   {
+    "key": "ref4",
+    "doi-asserted-by": "crossref",
+    "first-page": "16",
+    "DOI": "10.1002/cpt.9",
+    "article-title": "The impact of preclinical irreproducibility on drug development",
+    "volume": "97",
+    "author": "LP Freedman",
+    "year": "2015",
+    "journal-title": "Clin Pharmacol Therap"
+   },
+   {
+    "key": "ref5",
+    "doi-asserted-by": "crossref",
+    "first-page": "1",
+    "DOI": "10.3389/fncom.2012.00008",
+    "article-title": "Tracking replicability as a method of post-publication open evaluation",
+    "volume": "6",
+    "author": "JK Hartshorne",
+    "year": "2012",
+    "journal-title": "Front Comput Neurosci"
+   },
+   {
+    "key": "ref6",
+    "doi-asserted-by": "crossref",
+    "first-page": "531",
+    "DOI": "10.1038/483531a",
+    "article-title": "Drug development: raise standards for preclinical cancer research",
+    "volume": "483",
+    "author": "CG Begley",
+    "year": "2012",
+    "journal-title": "Nature"
+   },
+   {
+    "key": "ref7",
+    "doi-asserted-by": "crossref",
+    "first-page": "712",
+    "DOI": "10.1038/nrd3439-c1",
+    "article-title": "Believe it or not: how much can we rely on published data on potential drug targets?",
+    "volume": "10",
+    "author": "F Prinz",
+    "year": "2011",
+    "journal-title": "Nat Rev Drug Discov"
+   },
+   {
+    "key": "ref8",
+    "doi-asserted-by": "crossref",
+    "first-page": "e148",
+    "DOI": "10.7717/peerj.148",
+    "article-title": "On the reproducibility of science: unique identification of research resources in the biomedical literature",
+    "volume": "1",
+    "author": "NA Vasilevsky",
+    "year": "2013",
+    "journal-title": "PeerJ"
+   },
+   {
+    "key": "ref9",
+    "doi-asserted-by": "crossref",
+    "first-page": "1472",
+    "DOI": "10.1136/bmj.39590.732037.47",
+    "article-title": "What is missing from descriptions of treatment in trials and reviews?",
+    "volume": "336",
+    "author": "P Glasziou",
+    "year": "2008",
+    "journal-title": "BMJ"
+   },
+   {
+    "key": "ref10",
+    "doi-asserted-by": "crossref",
+    "first-page": "2499",
+    "DOI": "10.1001/jama.2013.281337",
+    "article-title": "Rethinking reanalysis",
+    "volume": "310",
+    "author": "DA Christakis",
+    "year": "2013",
+    "journal-title": "JAMA"
+   },
+   {
+    "key": "ref11",
+    "doi-asserted-by": "crossref",
+    "first-page": "597",
+    "DOI": "10.1016/j.expneurol.2011.06.017",
+    "article-title": "Replication and reproducibility in spinal cord injury research",
+    "volume": "233",
+    "author": "O Steward",
+    "year": "2012",
+    "journal-title": "Exp Neurol"
+   },
+   {
+    "key": "ref12",
+    "doi-asserted-by": "crossref",
+    "first-page": "e1001863",
+    "DOI": "10.1371/journal.pbio.1001863",
+    "article-title": "Distinguishing between exploratory and confirmatory preclinical research will improve translation",
+    "volume": "12",
+    "author": "J Kimmelman",
+    "year": "2014",
+    "journal-title": "PLoS Biol"
+   },
+   {
+    "key": "ref13",
+    "first-page": "41",
+    "article-title": "The Case for Standards in Life Science Research: Seizing Opportunities at a Time of Critical Need",
+    "year": "2013"
+   },
+   {
+    "key": "ref14",
+    "doi-asserted-by": "crossref",
+    "first-page": "166",
+    "DOI": "10.1016/S0140-6736(13)62227-8",
+    "article-title": "Increasing value and reducing waste in research design, conduct, and analysis",
+    "volume": "383",
+    "author": "JP Ioannidis",
+    "year": "2014",
+    "journal-title": "Lancet"
+   },
+   {
+    "key": "ref15",
+    "doi-asserted-by": "crossref",
+    "first-page": "e1000344",
+    "DOI": "10.1371/journal.pbio.1000344",
+    "article-title": "Publication bias in reports of animal stroke studies leads to major overstatement of efficacy",
+    "volume": "8",
+    "author": "ES Sena",
+    "year": "2010",
+    "journal-title": "PLoS Biol"
+   },
+   {
+    "key": "ref16",
+    "doi-asserted-by": "crossref",
+    "first-page": "1",
+    "DOI": "10.1158/0008-5472.CAN-14-0925",
+    "article-title": "The increasing urgency for standards in basic biologic research",
+    "volume": "74",
+    "author": "LP Freedman",
+    "year": "2014",
+    "journal-title": "Cancer Res"
+   },
+   {
+    "key": "ref17",
+    "first-page": "178",
+    "article-title": "Springer Series in Statistics",
+    "author": "CF Manski",
+    "year": "2003"
+   },
+   {
+    "key": "ref18",
+    "doi-asserted-by": "crossref",
+    "first-page": "3",
+    "DOI": "10.1056/NEJMp1311068",
+    "article-title": "Asia&apos;s ascent--global trends in biomedical R&amp;D expenditures",
+    "volume": "370",
+    "author": "J Chakma",
+    "year": "2014",
+    "journal-title": "N Engl J Med"
+   },
+   {
+    "key": "ref19",
+    "first-page": "315",
+    "year": "2013"
+   },
+   {
+    "key": "ref20",
+    "first-page": "36",
+    "article-title": "2014 Global R&amp;D Funding Forecast",
+    "year": "2013"
+   },
+   {
+    "key": "ref21",
+    "doi-asserted-by": "crossref",
+    "first-page": "e02956",
+    "DOI": "10.7554/eLife.02956",
+    "article-title": "Financial costs and personal consequences of research misconduct resulting in retracted publications",
+    "volume": "3",
+    "author": "AM Stern",
+    "year": "2014",
+    "journal-title": "Elife"
+   },
+   {
+    "key": "ref22",
+    "doi-asserted-by": "crossref",
+    "first-page": "483",
+    "DOI": "10.1038/505483b",
+    "article-title": "Reproducibility: fraud is not the big problem",
+    "volume": "505",
+    "author": "W Gunn",
+    "year": "2014",
+    "journal-title": "Nature"
+   },
+   {
+    "key": "ref23",
+    "first-page": "78",
+    "article-title": "2013 Biopharmaceutical Research Industry Profile",
+    "year": "2013"
+   },
+   {
+    "key": "ref24",
+    "doi-asserted-by": "crossref",
+    "first-page": "2",
+    "DOI": "10.1016/j.ajpath.2014.11.001",
+    "article-title": "Science isn&apos;t science if it isn&apos;t reproducible",
+    "volume": "185",
+    "author": "KA Roth",
+    "year": "2015",
+    "journal-title": "Am J Pathol"
+   },
+   {
+    "key": "ref25",
+    "doi-asserted-by": "crossref",
+    "first-page": "187",
+    "DOI": "10.1038/nature11556",
+    "article-title": "A call for transparent reporting to optimize the predictive value of preclinical research",
+    "volume": "490",
+    "author": "SC Landis",
+    "year": "2012",
+    "journal-title": "Nature"
+   },
+   {
+    "key": "ref26",
+    "doi-asserted-by": "crossref",
+    "first-page": "e1001756",
+    "DOI": "10.1371/journal.pbio.1001756",
+    "article-title": "Two years later: journals are not yet enforcing the ARRIVE guidelines on reporting standards for pre-clinical animal studies",
+    "volume": "12",
+    "author": "D Baker",
+    "year": "2014",
+    "journal-title": "PLoS Biol"
+   },
+   {
+    "key": "ref27",
+    "article-title": "Reproducibility of results in pre-clinical studies: a perspective from the bone field",
+    "author": "SC Manolagas",
+    "year": "2014",
+    "journal-title": "J Bone Miner Res"
+   },
+   {
+    "key": "ref28",
+    "doi-asserted-by": "crossref",
+    "first-page": "1933",
+    "DOI": "10.1257/aer.101.5.1933",
+    "article-title": "Climbing atop the shoulders of giants: the impact of institutions on cumulative research",
+    "volume": "101",
+    "author": "JL Furman",
+    "year": "2011",
+    "journal-title": "Am Econ Rev"
+   },
+   {
+    "key": "ref29",
+    "doi-asserted-by": "crossref",
+    "first-page": "1452",
+    "DOI": "10.1126/science.1259110",
+    "article-title": "Cell Biology. Fixing problems with cell lines",
+    "volume": "346",
+    "author": "JR Lorsch",
+    "year": "2014",
+    "journal-title": "Science"
+   },
+   {
+    "key": "ref30",
+    "doi-asserted-by": "crossref",
+    "first-page": "575",
+    "DOI": "10.2144/000112598",
+    "article-title": "The costs of using unauthenticated, over-passaged cell lines: how much more data do we need?",
+    "volume": "43",
+    "author": "P Hughes",
+    "year": "2007",
+    "journal-title": "Biotechniques"
+   },
+   {
+    "key": "ref31",
+    "doi-asserted-by": "crossref",
+    "first-page": "211",
+    "DOI": "10.1290/1543-706X(2004)40<211:CLCHAA>2.0.CO;2",
+    "article-title": "Cell line cross-contamination: how aware are mammalian cell culturists of the problem and how to monitor it?",
+    "volume": "40",
+    "author": "GC Buehring",
+    "year": "2004",
+    "journal-title": "In Vitro Cell Dev Biol Anim"
+   },
+   {
+    "key": "ref32",
+    "first-page": "34",
+    "article-title": "The Oxford Handbook of the Digital Economy",
+    "author": "J Farrell",
+    "year": "2012"
+   },
+   {
+    "key": "ref33",
+    "first-page": "298",
+    "article-title": "Governing the Commons: The Evolution of Institutions for Collective Action",
+    "author": "E Ostrom",
+    "year": "1990"
+   },
+   {
+    "key": "ref34",
+    "article-title": "Understanding the Cost of Quality in the Laboratory; A Report",
+    "author": "LM Berte",
+    "year": "2014"
+   }
+  ],
+  "updated-by": [
+   {
+    "DOI": "10.1371/journal.pbio.1002626",
+    "type": "correction",
+    "label": "Correction",
+    "source": "publisher",
+    "updated": {
+     "date-parts": [
+      [
+       2018,
+       4,
+       10
+      ]
+     ],
+     "date-time": "2018-04-10T00:00:00Z",
+     "timestamp": 1523318400000
+    }
+   }
+  ],
+  "container-title": [
+   "PLOS Biology"
+  ],
+  "original-title": [],
+  "language": "en",
+  "link": [
+   {
+    "URL": "http://dx.plos.org/10.1371/journal.pbio.1002165",
+    "content-type": "unspecified",
+    "content-version": "vor",
+    "intended-application": "similarity-checking"
+   }
+  ],
+  "deposited": {
+   "date-parts": [
+    [
+     2018,
+     10,
+     22
+    ]
+   ],
+   "date-time": "2018-10-22T12:35:20Z",
+   "timestamp": 1540211720000
+  },
+  "score": 1,
+  "resource": {
+   "primary": {
+    "URL": "https://dx.plos.org/10.1371/journal.pbio.1002165"
+   }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": {
+   "date-parts": [
+    [
+     2015,
+     6,
+     9
+    ]
+   ]
+  },
+  "references-count": 34,
+  "journal-issue": {
+   "issue": "6",
+   "published-online": {
+    "date-parts": [
+     [
+      2015,
+      6,
+      9
+     ]
+    ]
+   }
+  },
+  "URL": "https://doi.org/10.1371/journal.pbio.1002165",
+  "relation": {},
+  "ISSN": [
+   "1545-7885"
+  ],
+  "issn-type": [
+   {
+    "value": "1545-7885",
+    "type": "electronic"
+   }
+  ],
+  "subject": [],
+  "published": {
+   "date-parts": [
+    [
+     2015,
+     6,
+     9
+    ]
+   ]
+  }
+ }
+}
