@@ -24,18 +24,18 @@ from a PR body, a card, a commit message or another doc.
 
 ## Open at Sync 1
 
-The whole agenda, and nothing else. **Two entries**, plus one config key-name ratification
-carried over from B1. Everything else in this file is settled and only needs reading.
+The whole agenda, and nothing else. **Three entries.** Everything else in this file is
+settled and only needs reading.
 
 | ID | One line | Whose call | Why it cannot wait |
 |----|----------|-----------|--------------------|
 | **D-004** | Does `gate.py` want a model of its own? `models.critic` and `critic_temperature` were **removed** from `config.yaml`. | **Arsha** | If A1 wants an LLM in the gate, two config keys and a `config_reference.md` row come back — and the removal is currently pinned by a test. |
 | **D-020** | `version_mismatch` fires when **exactly one record is a preprint** — not on venue divergence, not on year alone. | **Ritik** (it constrains P5) | P5 is unwritten. Implemented any other way, three correctly-classified defects score as misses and recall fails the ≥ 19/21 target. |
-| **D-032**, part 2 only | The four `priority.*` key **names** are chosen and implemented; adding them to `config.yaml` needs Ritik, whose file it is. | **Ritik** (one four-line edit) | Until they land, `compute_priority()` fails closed unless `weights=` is passed. Nothing is blocked — every caller passes `weights=` — but the default path is dead code until it happens. |
+| **D-037**, routing only | The *finding* is settled — Crossref 404s every `10.48550/*` DOI. What is open is **how P4 resolves them**: a DataCite call, or arXiv-API routing. | **Ritik** (it constrains P4's waterfall) | P4 is unwritten and `resolvers.providers` is already `[crossref, openalex, arxiv]`. Chosen wrong, every arXiv-DOI reference in the corpus resolves to nothing and scores `unresolvable` against a label that says otherwise. |
 
 **D-004 is NOT settled by B1.** B1 adds no model call anywhere and takes no position on
 whether `gate.py` wants one; that question belongs to A1 and stays Arsha's to bring to
-Sync 1. Nothing in D-032 to D-035 touches it.
+Sync 1. Nothing in D-032 to D-037 touches it.
 
 **Closed since this table was first written.** Three in the B1-unblock PR:
 
@@ -47,16 +47,21 @@ Sync 1. Nothing in D-032 to D-035 touches it.
   intra-package and shared-infra imports, and enforces cross-lane isolation in **both**
   directions.
 
-And one in **B1** itself:
+And two more since:
 
 - **D-009** — **resolved by D-032.** `src/priority.py` ships in the B1 PR as shared infra,
-  the formula is implemented, and the three previously un-named constants are named. Only
-  the `config.yaml` edit remains, and it is Ritik's — see the D-032 row above.
+  the formula is implemented, and the three previously un-named constants are named.
+- **D-032, part 2** — **DONE.** The four `priority.*` keys landed on `main` at **`78fbe95`**
+  with the names and values D-032 specified, alongside a `settings.priority_weights()`
+  accessor. **The default lookup path is live**: `compute_priority(ev, verdict, 3)` now
+  returns `0.9` with no `weights=` argument. Parts 1 and 3 of D-032 still stand — the
+  fail-closed ruling governs anyone who later removes a key.
 
 ## Index
 
 | ID | Title |
 |----|-------|
+| D-037 | arXiv DOIs are DataCite-registered: Crossref 404s every `10.48550/*` |
 | D-036 | `ResolvedSource` carries `is_preprint` and `arxiv_id`; `venue` is not a preprint signal |
 | D-035 | `MatchEvidence` refuses a retracted source without the indicator, and both DOIs normalise identically |
 | D-034 | `doi_match` is tri-state: `None` means "no DOI to compare", not "the DOIs disagree" |
@@ -106,6 +111,59 @@ And one in **B1** itself:
 > Every one of them constrains a module nobody has written yet, which is why they are here
 > rather than left as prose in the file that established them. That is the standing rule
 > working late rather than not at all.
+
+---
+
+## D-037 — arXiv DOIs are DataCite-registered: Crossref 404s every `10.48550/*`
+
+**Date** 2026-09-03 (B1) · **Decided by** Arsha, from live API responses ·
+**Status**: the **finding** is settled and binding; the **routing choice is open** — Ritik's,
+Sync 1
+
+**Affects**: **P4** (`resolvers.providers` waterfall, `src/resolvers/*`), **P5** (D-020's
+preprint test), **R1**'s corpus selection. `config.yaml: resolvers.providers`.
+
+**The finding** (settled, not negotiable — it is what the API returns):
+
+| call | result |
+|------|--------|
+| `https://api.crossref.org/works/10.48550/arXiv.2005.14165` | **HTTP 404** |
+| `https://api.crossref.org/works/10.48550/arXiv.1810.04805` | **HTTP 404** |
+| `https://api.datacite.org/dois/10.48550/arXiv.2005.14165` | **HTTP 200** — `publisher='arXiv'`, `types.resourceTypeGeneral='Preprint'`, `container={}` |
+
+**arXiv DOIs are registered with DataCite, not Crossref.** Crossref's API returns 404 for the
+whole `10.48550/*` prefix. This is not a lookup that fails slowly or returns a weak match —
+it returns nothing, every time.
+
+**Why this needs an entry rather than a code comment**: `config.yaml` already declares
+`resolvers.providers: [crossref, openalex, arxiv]`, and the natural reading of a waterfall is
+"try Crossref first, it has the most DOIs". For an arXiv-DOI reference that step is
+**guaranteed** to miss, and the failure is silent and plausible — a 404 from a resolver looks
+exactly like a reference that genuinely has no record. The reference then falls through to
+whatever comes next, and if nothing handles the prefix it lands as `unresolvable` with an
+empty indicator set, which is **the same output D-018 assigns to a hallucinated reference.**
+A correctly-cited arXiv preprint would be scored as a fabrication. That is the single worst
+misclassification in the project's vocabulary, and it would arrive with no error in the logs.
+
+It also interacts with **D-036**: the preprint side of a version pair is exactly the record
+Crossref cannot return, so a resolver that only speaks Crossref can never set
+`resolved.is_preprint=True` for an arXiv work, and D-020's "exactly one side is a preprint"
+test would go permanently one-sided.
+
+**What is open, and it is Ritik's**: *how* P4 resolves the prefix. Two defensible routes:
+route `10.48550/*` to **DataCite** (one more HTTP client, but it is the registrar and returns
+`resourceTypeGeneral='Preprint'` directly), or detect the prefix and hand it to the **arXiv
+API** already in the provider list (no new dependency, and the arXiv resolver sets
+`is_preprint=True` unconditionally per D-036). OpenAlex is a third option and resolves the
+same work cleanly by DOI, with the preprint flags D-036 names. This entry does not pick one —
+it records that **picking nothing is not an option**, because the default waterfall silently
+produces the worst available answer.
+
+**Consequence**: **Ritik** — P4 must special-case the `10.48550/` prefix by one of the routes
+above, and must not let a Crossref 404 on that prefix fall through to `unresolvable`. Whatever
+is chosen, say so in the P4 PR and amend this entry. **Roy** — if R1's corpus cites any arXiv
+preprint by DOI, its label depends on this being handled; worth checking before the labels are
+written rather than after. **Nobody** treats a Crossref 404 as evidence a work does not exist.
 
 ---
 
@@ -159,7 +217,8 @@ Inc.'` — no preprint-server name anywhere in the record.
 
 **2. arXiv is not in Crossref at all.** `https://api.crossref.org/works/10.48550/arXiv.2005.14165`
 and the same call for BERT's `10.48550/arXiv.1810.04805` both return **HTTP 404**. arXiv DOIs
-are DataCite-registered; DataCite returns `publisher='arXiv'`,
+are DataCite-registered — logged separately as **D-037**, because it constrains P4's resolver
+waterfall independently of anything about preprints. DataCite returns `publisher='arXiv'`,
 `types.resourceTypeGeneral='Preprint'`, and **`container = {}`** — again an empty venue.
 
 **3. For the version-pair case D-020 exists for, the venue names the wrong thing or
@@ -389,8 +448,11 @@ B1's to do, and the names are:
 | `priority.retracted_bonus` | `0.3` | flat addition when `retracted` is present |
 | `priority.cap` | `1.0` | upper clamp |
 
-**They are not yet in `config.yaml`, because `config.yaml` is Ritik's file.** Adding those
-four lines is the only outstanding piece of D-009 and is on the Sync 1 list.
+**Part 2 is DONE.** The four keys landed on `main` at **`78fbe95`** with exactly these names
+and values, plus a `settings.priority_weights()` accessor returning the whole validated
+block. **The default lookup path is live** — `compute_priority(ev, verdict, 3)` returns `0.9`
+with no `weights=`. B1's call site needed no change: it reads `settings.load_config()` and
+`settings.priority_severity(config)`, both untouched by that commit.
 
 **3. It fails closed.** With the keys absent, `compute_priority()` raises `RuntimeError`
 naming exactly which are missing. It does **not** fall back to the numbers in the table
@@ -418,9 +480,9 @@ The cost is real and accepted: until the four keys land, the no-argument call pa
 It is survivable precisely because `weights=` exists — every caller in the tree passes the
 block explicitly, so B1 merges and unblocks A1, A2 and R2 with the formula fully exercised.
 
-**Consequence**: **Ritik** adds the four keys above to `config.yaml` (and a
-`docs/config_reference.md` row each), after which the default path goes live with no code
-change. **Ritik**'s P6 and **Arsha**'s A1 both call
+**Consequence**: ~~**Ritik** adds the four keys above to `config.yaml`~~ — **done at
+`78fbe95`**, with a `docs/config_reference.md` row each; the default path went live with no
+code change on B1's side, as predicted. **Ritik**'s P6 and **Arsha**'s A1 both call
 `compute_priority(ev, verdict, n_citing_claims)` and neither reimplements it; P6 must keep
 `verified` at severity `0.0` so D-027's version-pair assertion holds. **Nobody** adds a
 default to `src/priority.py`.

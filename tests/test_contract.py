@@ -587,6 +587,51 @@ def test_priority_unknown_status_raises_key_error():
 # --------------------------------------------------------------------------
 
 
+def test_fixture_weights_agree_with_config_yaml():
+    """The generator's WEIGHTS mirror must equal config.yaml, key by key.
+
+    tests/fixtures/build_ledger_fixture.py passes an explicit WEIGHTS dict
+    rather than reading config.yaml, and that is deliberate: the generator
+    has to stay runnable offline and byte-deterministic, so it must not
+    depend on a file another lane owns. The cost of that choice is a mirror
+    that can silently drift once config.yaml carries a real block -- and
+    drift here is expensive and quiet. The fixture's priorities would stop
+    matching what production scoring produces, while Roy's R2 fixture-mode
+    harness scores the worklist ORDER against exactly this file. Nothing
+    would fail; the ordering assertions would just be measuring a formula
+    the pipeline no longer uses.
+
+    So the mirror stays, and this test is the guard. Any edit to either side
+    fails here, naming the key.
+    """
+    from tests.fixtures.build_ledger_fixture import WEIGHTS
+
+    block = settings.load_config()["priority"]
+
+    assert set(WEIGHTS) == set(_SCALAR_KEYS) | {"severity"}, (
+        "fixture WEIGHTS has a different key set than the formula expects"
+    )
+    assert set(WEIGHTS["severity"]) == set(STATUSES), (
+        "fixture WEIGHTS.severity must carry exactly the four statuses"
+    )
+
+    for key in _SCALAR_KEYS:
+        assert float(WEIGHTS[key]) == float(block[key]), (
+            f"priority.{key} disagrees: fixture WEIGHTS has {WEIGHTS[key]!r}, "
+            f"config.yaml has {block[key]!r}. Update whichever is wrong -- the "
+            "fixture's priorities must match production scoring, because R2 "
+            "scores worklist order against the committed fixture."
+        )
+
+    config_severity = settings.priority_severity()
+    for status in _SEVERITY_KEYS:
+        assert float(WEIGHTS["severity"][status]) == float(config_severity[status]), (
+            f"priority.severity.{status} disagrees: fixture WEIGHTS has "
+            f"{WEIGHTS['severity'][status]!r}, config.yaml has "
+            f"{config_severity[status]!r}"
+        )
+
+
 def test_priority_config_is_either_complete_or_fails_closed():
     """Asserts the contract, not the current contents of config.yaml.
 
