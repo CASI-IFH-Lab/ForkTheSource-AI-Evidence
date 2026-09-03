@@ -4,9 +4,12 @@ Public interface (P4, P5, A3 import only these):
 
     split_entries(references_text) -> list[str]     plain code, no model
     extract_references(doc)        -> list[Reference]
+    extract_claims(doc, refs)      -> list[Claim]   re-exported from src.ingest.claims
     is_malformed(reference)        -> bool
 
-``extract_claims`` lives in ``src.ingest.claims`` and is plain regex.
+``extract_claims`` is implemented in ``src.ingest.claims`` - plain regex, no model, no
+cache, no config - and re-exported here because the P2 card names the two extraction
+entry points as one interface.
 
 ## The split is the part that must be right
 
@@ -67,7 +70,23 @@ from typing import Any
 from src import settings
 from src.contract import Reference
 from src.ingest import prompts
+from src.ingest.claims import extract_claims
 from src.ingest.pdf_parser import ParsedDocument
+
+# Re-exported, not defined here. The P2 card names extract_references and
+# extract_claims as one public interface - "other modules may import ONLY these" - so
+# both are importable from this module, and the agreed interface table in
+# scripts/update_status.py looks for both here. The implementation stays in claims.py
+# because it shares nothing with the extractor: no model, no cache, no config.
+__all__ = [
+    "ParsedDocument",
+    "extract_claims",
+    "extract_references",
+    "is_malformed",
+    "marker_style",
+    "ref_id_for",
+    "split_entries",
+]
 
 _STAGE = "extractor"
 
