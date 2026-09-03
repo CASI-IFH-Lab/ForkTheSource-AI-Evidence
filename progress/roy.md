@@ -98,3 +98,47 @@ notes: clock is REPLAN-relative, i.e. this is T+4:40; the heading omits the lite
        hooks and the Action work from my machine.
 next: R2-MINIMAL — --fixtures only: ref_id hard-error join, exact-set indicators,
       defect_id recall, the two release gates, plain-text metrics table. ETA 5:30.
+
+## 5:05 — R2 MERGED
+branch: roy-r2-harness -> main @ 54fe414 (squash, PR #19)
+tests: 494 passed, 1 skipped, 1 wall-clock timing failure in tests/test_resolvers.py under
+       a loaded machine, passes in isolation. My own three in tests/test_harness.py: green.
+publishes: python eval/run_eval.py --fixtures <ledger.json> [<ledger2.json> ...]
+           [--labels-dir DIR]   (--labels-dir defaults to eval/golden)
+           exit 0 = gates clean; exit 1 = RELEASE GATE FAIL (conflict on an injected:false
+           reference, or a banned term in any rationale, check or evidence note); exit 2 =
+           hard error (ref_id join gap per D-026, or a missing/malformed label file).
+           eval/golden_fixtures/fixture-paper.json — labels for
+           tests/fixtures/ledger_fixture.json; a harness test instrument, NOT corpus.
+           Every run also writes eval/outputs/metrics_<timestamp>.md (gitignored).
+notes: --fixtures scores anything against golden right now; both release gates are live.
+       Branch is roy-r2-harness, not roy/r2-harness — refs/heads/roy exists on the remote,
+       so the slashed name is a ref path conflict, same as roy-r1-corpus at R1.
+       Version-pair traps are derived from label shape (expected verified + version_mismatch),
+       not from a defect_id, so Phase 2's extra traps need no code edit. Recall denominator
+       is derived from the loaded labels per D-302 — reads 5 on the fixture, 6 on the corpus.
+       Banned-term matching is case-insensitive SUBSTRING, matching gate.py's documented
+       semantics, and a test asserts AI-generated from settings.banned_terms() matches
+       mid-sentence, because a gate that silently never fires is worse than no gate.
+       OUTSTANDING, not forgotten: the corpus itself is unscored until a P6 ledger exists
+       (eval/golden/paper1.json + control.json are ready and waiting on a ledger path), and
+       the OpenAlex retraction sweep of the clean rows is still to run — deliberately not
+       run today, and the conflict-on-clean gate surfaces a newly retracted clean row anyway.
+next: R2 --full + the worklist assertion (D-027), Phase 2 row 1. Not started tonight.
+
+## 5:06 — R2 OBJECTION
+notes: False alarm is implemented as LABEL DIVERGENCE — observed needs_check where the
+       label expected verified — not as FORMAT.md's and D-019's "needs_check on an
+       injected:false reference". Under FORMAT's wording the control's R17/R18 duplicate
+       pair, which is injected:false and labelled needs_check per D-016, reads as two false
+       alarms on a paper with nothing wrong with it. They match their label, so they count
+       as matches and print on their own line ("needs_check rows matching their label").
+       Built the divergent way on instruction; no D-number per REPLAN §6, revisit in Phase 2.
+
+## 5:07 — R2 OBJECTION
+notes: The label lookup tolerates a .pdf suffix on Ledger.document_name (paper1.pdf ->
+       paper1.json) rather than requiring the exact spelling D-025 implies. The Phase 1
+       labels read "paper1" and no P6 ledger is on main to confirm document_name against,
+       so both spellings resolve rather than one of them becoming a missing-label hard
+       error at the worst possible moment. Drop the tolerance once @ritik posts P6's
+       document_name. No D-number per REPLAN §6.
