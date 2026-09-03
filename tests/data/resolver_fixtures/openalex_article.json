@@ -1,0 +1,1054 @@
+{
+ "id": "https://openalex.org/W585341442",
+ "doi": "https://doi.org/10.1371/journal.pbio.1002165",
+ "title": "The Economics of Reproducibility in Preclinical Research",
+ "display_name": "The Economics of Reproducibility in Preclinical Research",
+ "publication_year": 2015,
+ "publication_date": "2015-06-09",
+ "ids": {
+  "openalex": "https://openalex.org/W585341442",
+  "doi": "https://doi.org/10.1371/journal.pbio.1002165",
+  "mag": "585341442",
+  "pmid": "https://pubmed.ncbi.nlm.nih.gov/26057340"
+ },
+ "language": "en",
+ "primary_location": {
+  "id": "doi:10.1371/journal.pbio.1002165",
+  "is_oa": true,
+  "landing_page_url": "https://doi.org/10.1371/journal.pbio.1002165",
+  "pdf_url": "https://journals.plos.org/plosbiology/article/file?id=10.1371/journal.pbio.1002165&type=printable",
+  "source": {
+   "id": "https://openalex.org/S154343897",
+   "display_name": "PLoS Biology",
+   "issn_l": "1544-9173",
+   "issn": [
+    "1544-9173",
+    "1545-7885"
+   ],
+   "is_oa": true,
+   "is_in_doaj": true,
+   "is_core": true,
+   "host_organization": "https://openalex.org/P4310315706",
+   "host_organization_name": "Public Library of Science",
+   "host_organization_lineage": [
+    "https://openalex.org/P4310315706"
+   ],
+   "host_organization_lineage_names": [
+    "Public Library of Science"
+   ],
+   "type": "journal"
+  },
+  "license": "cc-by",
+  "license_id": "https://openalex.org/licenses/cc-by",
+  "version": "publishedVersion",
+  "is_accepted": true,
+  "is_published": true,
+  "raw_source_name": "PLOS Biology",
+  "raw_type": "journal-article"
+ },
+ "type": "article",
+ "indexed_in": [
+  "crossref",
+  "doaj",
+  "pubmed"
+ ],
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "gold",
+  "oa_url": "https://journals.plos.org/plosbiology/article/file?id=10.1371/journal.pbio.1002165&type=printable",
+  "any_repository_has_fulltext": true
+ },
+ "authorships": [
+  {
+   "author_position": "first",
+   "author": {
+    "id": "https://openalex.org/A5033005779",
+    "display_name": "Leonard P. Freedman",
+    "orcid": "https://orcid.org/0000-0003-2352-4037"
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I1279808887",
+     "display_name": "American National Standards Institute",
+     "ror": "https://ror.org/02ttqft70",
+     "country_code": "US",
+     "type": "nonprofit",
+     "lineage": [
+      "https://openalex.org/I1279808887"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": true,
+   "raw_author_name": "Leonard P. Freedman",
+   "raw_affiliation_strings": [
+    "Global Biological Standards Institute, Washington, D.C., United States of America"
+   ],
+   "raw_orcid": null,
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Global Biological Standards Institute, Washington, D.C., United States of America",
+     "institution_ids": [
+      "https://openalex.org/I1279808887"
+     ]
+    }
+   ]
+  },
+  {
+   "author_position": "middle",
+   "author": {
+    "id": "https://openalex.org/A5013721295",
+    "display_name": "Iain Cockburn",
+    "orcid": "https://orcid.org/0000-0003-2034-0187"
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I111088046",
+     "display_name": "Boston University",
+     "ror": "https://ror.org/05qwgg493",
+     "country_code": "US",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I111088046"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Iain M. Cockburn",
+   "raw_affiliation_strings": [
+    "Boston University School of Management, Boston, Massachusetts, United States of America"
+   ],
+   "raw_orcid": null,
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Boston University School of Management, Boston, Massachusetts, United States of America",
+     "institution_ids": [
+      "https://openalex.org/I111088046"
+     ]
+    }
+   ]
+  },
+  {
+   "author_position": "last",
+   "author": {
+    "id": "https://openalex.org/A5038906363",
+    "display_name": "Timothy Simcoe",
+    "orcid": "https://orcid.org/0000-0002-5950-660X"
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I111088046",
+     "display_name": "Boston University",
+     "ror": "https://ror.org/05qwgg493",
+     "country_code": "US",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I111088046"
+     ]
+    },
+    {
+     "id": "https://openalex.org/I114442173",
+     "display_name": "Council of Economic Advisers",
+     "ror": "https://ror.org/02s4m5j79",
+     "country_code": "US",
+     "type": "government",
+     "lineage": [
+      "https://openalex.org/I114442173",
+      "https://openalex.org/I1308683654"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Timothy S. Simcoe",
+   "raw_affiliation_strings": [
+    "Boston University School of Management, Boston, Massachusetts, United States of America; Council of Economic Advisers, Washington, D.C., United States of America",
+    "Boston University School of Management, Boston, Massachusetts, United States of America",
+    "Council of Economic Advisers, Washington, D.C., United States of America"
+   ],
+   "raw_orcid": null,
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Boston University School of Management, Boston, Massachusetts, United States of America; Council of Economic Advisers, Washington, D.C., United States of America",
+     "institution_ids": [
+      "https://openalex.org/I114442173"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Boston University School of Management, Boston, Massachusetts, United States of America",
+     "institution_ids": [
+      "https://openalex.org/I111088046"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Council of Economic Advisers, Washington, D.C., United States of America",
+     "institution_ids": [
+      "https://openalex.org/I114442173"
+     ]
+    }
+   ]
+  }
+ ],
+ "institutions": [],
+ "countries_distinct_count": 1,
+ "institutions_distinct_count": 3,
+ "corresponding_author_ids": [
+  "https://openalex.org/A5033005779"
+ ],
+ "corresponding_institution_ids": [
+  "https://openalex.org/I1279808887"
+ ],
+ "apc_list": {
+  "value": 5500,
+  "currency": "USD",
+  "value_usd": 5500
+ },
+ "apc_paid": {
+  "value": 5500,
+  "currency": "USD",
+  "value_usd": 5500
+ },
+ "fwci": 46.1121,
+ "has_fulltext": true,
+ "cited_by_count": 1090,
+ "citation_normalized_percentile": {
+  "value": 0.99972056,
+  "is_in_top_1_percent": true,
+  "is_in_top_10_percent": true
+ },
+ "cited_by_percentile_year": {
+  "min": 89,
+  "max": 100
+ },
+ "biblio": {
+  "volume": "13",
+  "issue": "6",
+  "first_page": "e1002165",
+  "last_page": "e1002165"
+ },
+ "is_retracted": false,
+ "is_paratext": false,
+ "is_xpac": false,
+ "primary_topic": {
+  "id": "https://openalex.org/T12255",
+  "display_name": "Biosimilars and Bioanalytical Methods",
+  "score": 0.9804999828338623,
+  "subfield": {
+   "id": "https://openalex.org/subfields/2403",
+   "display_name": "Immunology"
+  },
+  "field": {
+   "id": "https://openalex.org/fields/24",
+   "display_name": "Immunology and Microbiology"
+  },
+  "domain": {
+   "id": "https://openalex.org/domains/1",
+   "display_name": "Life Sciences"
+  }
+ },
+ "topics": [
+  {
+   "id": "https://openalex.org/T12255",
+   "display_name": "Biosimilars and Bioanalytical Methods",
+   "score": 0.9804999828338623,
+   "subfield": {
+    "id": "https://openalex.org/subfields/2403",
+    "display_name": "Immunology"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/24",
+    "display_name": "Immunology and Microbiology"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/1",
+    "display_name": "Life Sciences"
+   }
+  },
+  {
+   "id": "https://openalex.org/T12859",
+   "display_name": "Cell Image Analysis Techniques",
+   "score": 0.9726999998092651,
+   "subfield": {
+    "id": "https://openalex.org/subfields/1304",
+    "display_name": "Biophysics"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/13",
+    "display_name": "Biochemistry, Genetics and Molecular Biology"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/1",
+    "display_name": "Life Sciences"
+   }
+  },
+  {
+   "id": "https://openalex.org/T13280",
+   "display_name": "Biomedical and Engineering Education",
+   "score": 0.970300018787384,
+   "subfield": {
+    "id": "https://openalex.org/subfields/2204",
+    "display_name": "Biomedical Engineering"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/22",
+    "display_name": "Engineering"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/3",
+    "display_name": "Physical Sciences"
+   }
+  }
+ ],
+ "keywords": [
+  {
+   "id": "https://openalex.org/keywords/preclinical-research",
+   "display_name": "Preclinical research",
+   "score": 0.6923505067825317
+  },
+  {
+   "id": "https://openalex.org/keywords/reproducibility",
+   "display_name": "Reproducibility",
+   "score": 0.6544641852378845
+  },
+  {
+   "id": "https://openalex.org/keywords/biology",
+   "display_name": "Biology",
+   "score": 0.5335301160812378
+  },
+  {
+   "id": "https://openalex.org/keywords/drug-development",
+   "display_name": "Drug development",
+   "score": 0.4137912690639496
+  },
+  {
+   "id": "https://openalex.org/keywords/pharmacology",
+   "display_name": "Pharmacology",
+   "score": 0.2519844174385071
+  },
+  {
+   "id": "https://openalex.org/keywords/drug",
+   "display_name": "Drug",
+   "score": 0.23686185479164124
+  },
+  {
+   "id": "https://openalex.org/keywords/bioinformatics",
+   "display_name": "Bioinformatics",
+   "score": 0.21988502144813538
+  },
+  {
+   "id": "https://openalex.org/keywords/statistics",
+   "display_name": "Statistics",
+   "score": 0.14975392818450928
+  }
+ ],
+ "concepts": [
+  {
+   "id": "https://openalex.org/C2993043200",
+   "wikidata": "https://www.wikidata.org/wiki/Q7239206",
+   "display_name": "Preclinical research",
+   "level": 2,
+   "score": 0.6923505067825317
+  },
+  {
+   "id": "https://openalex.org/C9893847",
+   "wikidata": "https://www.wikidata.org/wiki/Q1425625",
+   "display_name": "Reproducibility",
+   "level": 2,
+   "score": 0.6544641852378845
+  },
+  {
+   "id": "https://openalex.org/C86803240",
+   "wikidata": "https://www.wikidata.org/wiki/Q420",
+   "display_name": "Biology",
+   "level": 0,
+   "score": 0.5335301160812378
+  },
+  {
+   "id": "https://openalex.org/C64903051",
+   "wikidata": "https://www.wikidata.org/wiki/Q2198549",
+   "display_name": "Drug development",
+   "level": 3,
+   "score": 0.4137912690639496
+  },
+  {
+   "id": "https://openalex.org/C98274493",
+   "wikidata": "https://www.wikidata.org/wiki/Q128406",
+   "display_name": "Pharmacology",
+   "level": 1,
+   "score": 0.2519844174385071
+  },
+  {
+   "id": "https://openalex.org/C2780035454",
+   "wikidata": "https://www.wikidata.org/wiki/Q8386",
+   "display_name": "Drug",
+   "level": 2,
+   "score": 0.23686185479164124
+  },
+  {
+   "id": "https://openalex.org/C60644358",
+   "wikidata": "https://www.wikidata.org/wiki/Q128570",
+   "display_name": "Bioinformatics",
+   "level": 1,
+   "score": 0.21988502144813538
+  },
+  {
+   "id": "https://openalex.org/C105795698",
+   "wikidata": "https://www.wikidata.org/wiki/Q12483",
+   "display_name": "Statistics",
+   "level": 1,
+   "score": 0.14975392818450928
+  },
+  {
+   "id": "https://openalex.org/C33923547",
+   "wikidata": "https://www.wikidata.org/wiki/Q395",
+   "display_name": "Mathematics",
+   "level": 0,
+   "score": 0.0
+  }
+ ],
+ "mesh": [
+  {
+   "descriptor_ui": "D015203",
+   "descriptor_name": "Reproducibility of Results",
+   "qualifier_ui": null,
+   "qualifier_name": null,
+   "is_major_topic": true
+  },
+  {
+   "descriptor_ui": "D015203",
+   "descriptor_name": "Reproducibility of Results",
+   "qualifier_ui": null,
+   "qualifier_name": null,
+   "is_major_topic": true
+  },
+  {
+   "descriptor_ui": "D015203",
+   "descriptor_name": "Reproducibility of Results",
+   "qualifier_ui": null,
+   "qualifier_name": null,
+   "is_major_topic": true
+  },
+  {
+   "descriptor_ui": "D035843",
+   "descriptor_name": "Biomedical Research",
+   "qualifier_ui": "Q000191",
+   "qualifier_name": "economics",
+   "is_major_topic": false
+  },
+  {
+   "descriptor_ui": "D035843",
+   "descriptor_name": "Biomedical Research",
+   "qualifier_ui": "Q000191",
+   "qualifier_name": "economics",
+   "is_major_topic": false
+  },
+  {
+   "descriptor_ui": "D035843",
+   "descriptor_name": "Biomedical Research",
+   "qualifier_ui": "Q000191",
+   "qualifier_name": "economics",
+   "is_major_topic": false
+  },
+  {
+   "descriptor_ui": "D035843",
+   "descriptor_name": "Biomedical Research",
+   "qualifier_ui": "Q000592",
+   "qualifier_name": "standards",
+   "is_major_topic": false
+  },
+  {
+   "descriptor_ui": "D035843",
+   "descriptor_name": "Biomedical Research",
+   "qualifier_ui": "Q000592",
+   "qualifier_name": "standards",
+   "is_major_topic": false
+  },
+  {
+   "descriptor_ui": "D035843",
+   "descriptor_name": "Biomedical Research",
+   "qualifier_ui": "Q000592",
+   "qualifier_name": "standards",
+   "is_major_topic": false
+  }
+ ],
+ "locations_count": 7,
+ "locations": [
+  {
+   "id": "doi:10.1371/journal.pbio.1002165",
+   "is_oa": true,
+   "landing_page_url": "https://doi.org/10.1371/journal.pbio.1002165",
+   "pdf_url": "https://journals.plos.org/plosbiology/article/file?id=10.1371/journal.pbio.1002165&type=printable",
+   "source": {
+    "id": "https://openalex.org/S154343897",
+    "display_name": "PLoS Biology",
+    "issn_l": "1544-9173",
+    "issn": [
+     "1544-9173",
+     "1545-7885"
+    ],
+    "is_oa": true,
+    "is_in_doaj": true,
+    "is_core": true,
+    "host_organization": "https://openalex.org/P4310315706",
+    "host_organization_name": "Public Library of Science",
+    "host_organization_lineage": [
+     "https://openalex.org/P4310315706"
+    ],
+    "host_organization_lineage_names": [
+     "Public Library of Science"
+    ],
+    "type": "journal"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "PLOS Biology",
+   "raw_type": "journal-article"
+  },
+  {
+   "id": "pmid:26057340",
+   "is_oa": false,
+   "landing_page_url": "https://pubmed.ncbi.nlm.nih.gov/26057340",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306525036",
+    "display_name": "PubMed",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "is_in_doaj": false,
+    "is_core": false,
+    "host_organization": "https://openalex.org/I1299303238",
+    "host_organization_name": "National Institutes of Health",
+    "host_organization_lineage": [
+     "https://openalex.org/I1299303238"
+    ],
+    "host_organization_lineage_names": [],
+    "type": "repository"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "PLoS biology",
+   "raw_type": "Journal Article"
+  },
+  {
+   "id": "pmh:oai:europepmc.org:3431361",
+   "is_oa": true,
+   "landing_page_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/4461318",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306400806",
+    "display_name": "Europe PMC (PubMed Central)",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "is_in_doaj": false,
+    "is_core": false,
+    "host_organization": "https://openalex.org/I1303153112",
+    "host_organization_name": "European Bioinformatics Institute",
+    "host_organization_lineage": [
+     "https://openalex.org/I1303153112"
+    ],
+    "host_organization_lineage_names": [],
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "Text"
+  },
+  {
+   "id": "pmh:oai:RePEc:plo:pbio00:1002165",
+   "is_oa": false,
+   "landing_page_url": "https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.1002165",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306401271",
+    "display_name": "RePEc: Research Papers in Economics",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "is_in_doaj": false,
+    "is_core": false,
+    "host_organization": "https://openalex.org/I77793887",
+    "host_organization_name": "Federal Reserve Bank of St. Louis",
+    "host_organization_lineage": [
+     "https://openalex.org/I77793887"
+    ],
+    "host_organization_lineage_names": [],
+    "type": "repository"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "article"
+  },
+  {
+   "id": "pmh:oai:doaj.org/article:0db2acf4a1554ce4adfcbbc7f08e51ac",
+   "is_oa": false,
+   "landing_page_url": "https://doaj.org/article/0db2acf4a1554ce4adfcbbc7f08e51ac",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306401280",
+    "display_name": "DOAJ (DOAJ: Directory of Open Access Journals)",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "is_in_doaj": false,
+    "is_core": false,
+    "host_organization": null,
+    "host_organization_name": null,
+    "host_organization_lineage": [],
+    "host_organization_lineage_names": [],
+    "type": "repository"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "PLoS Biology, Vol 13, Iss 6, p e1002165 (2015)",
+   "raw_type": "article"
+  },
+  {
+   "id": "pmh:oai:figshare.com:article/1444039",
+   "is_oa": true,
+   "landing_page_url": "https://figshare.com/articles/dataset/_The_Economics_of_Reproducibility_in_Preclinical_Research_/1444039",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4377196282",
+    "display_name": "Figshare",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "is_in_doaj": false,
+    "is_core": false,
+    "host_organization": "https://openalex.org/I4210132348",
+    "host_organization_name": "Figshare (United Kingdom)",
+    "host_organization_lineage": [
+     "https://openalex.org/I4210132348"
+    ],
+    "host_organization_lineage_names": [],
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "",
+   "raw_type": "Dataset"
+  },
+  {
+   "id": "pmh:oai:open.bu.edu:2144/40268",
+   "is_oa": true,
+   "landing_page_url": "https://hdl.handle.net/2144/40268",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306402384",
+    "display_name": "OpenBU (Boston University)",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "is_in_doaj": false,
+    "is_core": false,
+    "host_organization": "https://openalex.org/I111088046",
+    "host_organization_name": "Boston University",
+    "host_organization_lineage": [
+     "https://openalex.org/I111088046"
+    ],
+    "host_organization_lineage_names": [],
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "Article"
+  }
+ ],
+ "best_oa_location": {
+  "id": "doi:10.1371/journal.pbio.1002165",
+  "is_oa": true,
+  "landing_page_url": "https://doi.org/10.1371/journal.pbio.1002165",
+  "pdf_url": "https://journals.plos.org/plosbiology/article/file?id=10.1371/journal.pbio.1002165&type=printable",
+  "source": {
+   "id": "https://openalex.org/S154343897",
+   "display_name": "PLoS Biology",
+   "issn_l": "1544-9173",
+   "issn": [
+    "1544-9173",
+    "1545-7885"
+   ],
+   "is_oa": true,
+   "is_in_doaj": true,
+   "is_core": true,
+   "host_organization": "https://openalex.org/P4310315706",
+   "host_organization_name": "Public Library of Science",
+   "host_organization_lineage": [
+    "https://openalex.org/P4310315706"
+   ],
+   "host_organization_lineage_names": [
+    "Public Library of Science"
+   ],
+   "type": "journal"
+  },
+  "license": "cc-by",
+  "license_id": "https://openalex.org/licenses/cc-by",
+  "version": "publishedVersion",
+  "is_accepted": true,
+  "is_published": true,
+  "raw_source_name": "PLOS Biology",
+  "raw_type": "journal-article"
+ },
+ "sustainable_development_goals": [],
+ "awards": [],
+ "funders": [],
+ "has_content": {
+  "pdf": true,
+  "grobid_xml": true
+ },
+ "content_urls": {
+  "pdf": "https://content.openalex.org/works/W585341442.pdf",
+  "grobid_xml": "https://content.openalex.org/works/W585341442.grobid-xml"
+ },
+ "referenced_works_count": 37,
+ "referenced_works": [
+  "https://openalex.org/W217839825",
+  "https://openalex.org/W1544362532",
+  "https://openalex.org/W1549329940",
+  "https://openalex.org/W1965872454",
+  "https://openalex.org/W1975130349",
+  "https://openalex.org/W1975611355",
+  "https://openalex.org/W1984215466",
+  "https://openalex.org/W1987777080",
+  "https://openalex.org/W1994156127",
+  "https://openalex.org/W1999131703",
+  "https://openalex.org/W2015585903",
+  "https://openalex.org/W2026025998",
+  "https://openalex.org/W2043320673",
+  "https://openalex.org/W2048060485",
+  "https://openalex.org/W2050691291",
+  "https://openalex.org/W2058182518",
+  "https://openalex.org/W2066703498",
+  "https://openalex.org/W2067833766",
+  "https://openalex.org/W2068698532",
+  "https://openalex.org/W2069578934",
+  "https://openalex.org/W2070104504",
+  "https://openalex.org/W2085512194",
+  "https://openalex.org/W2089705824",
+  "https://openalex.org/W2089800491",
+  "https://openalex.org/W2114224807",
+  "https://openalex.org/W2137516955",
+  "https://openalex.org/W2148613765",
+  "https://openalex.org/W2150768732",
+  "https://openalex.org/W2164759539",
+  "https://openalex.org/W2166378641",
+  "https://openalex.org/W2175723801",
+  "https://openalex.org/W2178005554",
+  "https://openalex.org/W3123090074",
+  "https://openalex.org/W3143118516",
+  "https://openalex.org/W4210765235",
+  "https://openalex.org/W4238346210",
+  "https://openalex.org/W7037984302"
+ ],
+ "related_works": [
+  "https://openalex.org/W2082860237",
+  "https://openalex.org/W2413717610",
+  "https://openalex.org/W4282925520",
+  "https://openalex.org/W2203400679",
+  "https://openalex.org/W2148910583",
+  "https://openalex.org/W4308472123",
+  "https://openalex.org/W2169813047",
+  "https://openalex.org/W4327654288",
+  "https://openalex.org/W2168871320",
+  "https://openalex.org/W2991137874"
+ ],
+ "abstract_inverted_index": {
+  "Low": [
+   0
+  ],
+  "reproducibility": [
+   1,
+   69
+  ],
+  "rates": [
+   2,
+   70
+  ],
+  "within": [
+   3
+  ],
+  "life": [
+   4
+  ],
+  "science": [
+   5
+  ],
+  "research": [
+   6,
+   36,
+   47
+  ],
+  "undermine": [
+   7
+  ],
+  "cumulative": [
+   8,
+   30
+  ],
+  "knowledge": [
+   9
+  ],
+  "production": [
+   10
+  ],
+  "and": [
+   11,
+   16,
+   62,
+   81
+  ],
+  "contribute": [
+   12
+  ],
+  "to": [
+   13,
+   74
+  ],
+  "both": [
+   14
+  ],
+  "delays": [
+   15
+  ],
+  "costs": [
+   17
+  ],
+  "of": [
+   18,
+   24,
+   33,
+   78
+  ],
+  "therapeutic": [
+   19
+  ],
+  "drug": [
+   20
+  ],
+  "development.": [
+   21
+  ],
+  "An": [
+   22
+  ],
+  "analysis": [
+   23
+  ],
+  "past": [
+   25
+  ],
+  "studies": [
+   26
+  ],
+  "indicates": [
+   27
+  ],
+  "that": [
+   28,
+   48,
+   71
+  ],
+  "the": [
+   29,
+   52,
+   76
+  ],
+  "(total)": [
+   31
+  ],
+  "prevalence": [
+   32
+  ],
+  "irreproducible": [
+   34
+  ],
+  "preclinical": [
+   35,
+   46
+  ],
+  "exceeds": [
+   37
+  ],
+  "50%,": [
+   38
+  ],
+  "resulting": [
+   39
+  ],
+  "in": [
+   40,
+   68
+  ],
+  "approximately": [
+   41
+  ],
+  "US$28,000,000,000": [
+   42
+  ],
+  "(US$28B)/year": [
+   43
+  ],
+  "spent": [
+   44
+  ],
+  "on": [
+   45
+  ],
+  "is": [
+   49
+  ],
+  "not": [
+   50
+  ],
+  "reproducible-in": [
+   51
+  ],
+  "United": [
+   53
+  ],
+  "States": [
+   54
+  ],
+  "alone.": [
+   55
+  ],
+  "We": [
+   56
+  ],
+  "outline": [
+   57
+  ],
+  "a": [
+   58,
+   63
+  ],
+  "framework": [
+   59
+  ],
+  "for": [
+   60,
+   65
+  ],
+  "solutions": [
+   61
+  ],
+  "plan": [
+   64
+  ],
+  "long-term": [
+   66
+  ],
+  "improvements": [
+   67
+  ],
+  "will": [
+   72
+  ],
+  "help": [
+   73
+  ],
+  "accelerate": [
+   75
+  ],
+  "discovery": [
+   77
+  ],
+  "life-saving": [
+   79
+  ],
+  "therapies": [
+   80
+  ],
+  "cures.": [
+   82
+  ]
+ },
+ "counts_by_year": [
+  {
+   "year": 2026,
+   "cited_by_count": 36
+  },
+  {
+   "year": 2025,
+   "cited_by_count": 48
+  },
+  {
+   "year": 2024,
+   "cited_by_count": 71
+  },
+  {
+   "year": 2023,
+   "cited_by_count": 99
+  },
+  {
+   "year": 2022,
+   "cited_by_count": 98
+  },
+  {
+   "year": 2021,
+   "cited_by_count": 98
+  },
+  {
+   "year": 2020,
+   "cited_by_count": 155
+  },
+  {
+   "year": 2019,
+   "cited_by_count": 119
+  },
+  {
+   "year": 2018,
+   "cited_by_count": 113
+  },
+  {
+   "year": 2017,
+   "cited_by_count": 98
+  },
+  {
+   "year": 2016,
+   "cited_by_count": 104
+  },
+  {
+   "year": 2015,
+   "cited_by_count": 50
+  },
+  {
+   "year": 2013,
+   "cited_by_count": 1
+  }
+ ],
+ "updated_date": "2026-08-29T07:29:34.045763",
+ "created_date": "2025-10-10T00:00:00"
+}

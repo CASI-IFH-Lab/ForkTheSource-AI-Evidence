@@ -77,19 +77,43 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add STATUS.md
           git commit -m "[status] regenerate STATUS.md"
-          if ! git push origin HEAD:main; then
-            echo "::error title=STATUS.md push rejected::The workflow could not push to main."
-            echo ""
-            echo "This job has 'permissions: contents: write', so the block is at the"
-            echo "repository or organisation level, not in this file. Fix it at:"
-            echo "  Settings -> Actions -> General -> Workflow permissions"
-            echo "  -> select 'Read and write permissions'"
-            echo ""
-            echo "If main is protected, also allow this actor to push, or add"
-            echo "github-actions[bot] to the branch protection bypass list."
-            echo ""
-            echo "Until this is fixed STATUS.md on main is STALE - regenerate it"
-            echo "locally with: python scripts/update_status.py"
-            exit 1
+
+          if git push origin HEAD:main; then
+            echo "Pushed a regenerated STATUS.md to main."
+            exit 0
           fi
-          echo "Pushed a regenerated STATUS.md to main."
+
+          # A rejected push has two very different causes needing very different
+          # messages. A LOST RACE - somebody pushed to main while this job was
+          # running - is transient and self-correcting, and rebasing then retrying is
+          # the entire fix. A PERMISSIONS BLOCK is not transient and someone has to go
+          # change a setting.
+          #
+          # The first version of this step blamed permissions for both, and then did
+          # exactly that on a real lost race: it sent the reader off to change an
+          # Actions setting that was never broken. A red X carrying a wrong
+          # explanation is worse than no red X, because it teaches people to stop
+          # reading them.
+          echo "Push rejected. Fetching main, rebasing, and retrying once..."
+          git fetch origin main
+          if git rebase origin/main && git push origin HEAD:main; then
+            echo "Pushed after a rebase - main moved while this job was running."
+            exit 0
+          fi
+
+          echo "::error title=STATUS.md push rejected twice::Could not push to main, and a rebase did not fix it."
+          echo ""
+          echo "A lost race is ruled out: this already retried after rebasing onto"
+          echo "the current main. So the cause is almost certainly permissions."
+          echo ""
+          echo "This job has 'permissions: contents: write', so the block is at the"
+          echo "repository or organisation level, not in this file. Fix it at:"
+          echo "  Settings -> Actions -> General -> Workflow permissions"
+          echo "  -> select 'Read and write permissions'"
+          echo ""
+          echo "If main is protected, also allow this actor to push, or add"
+          echo "github-actions[bot] to the branch protection bypass list."
+          echo ""
+          echo "Until this is fixed STATUS.md on main is STALE - regenerate it"
+          echo "locally with: python scripts/update_status.py"
+          exit 1
