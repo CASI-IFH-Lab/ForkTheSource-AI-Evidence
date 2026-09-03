@@ -1,0 +1,97 @@
+{
+  "_note": [
+    "HARNESS TEST INSTRUMENT -- NOT CORPUS GROUND TRUTH.",
+    "These labels describe tests/fixtures/ledger_fixture.json, a synthetic 8-entry Ledger",
+    "built by Ritik so the lanes are never blocked on the pipeline (shared plan R5). No PDF",
+    "in eval/corpus/ corresponds to it and no metric on the demo slide comes from it: it",
+    "exists so run_eval.py can be exercised end to end offline.",
+    "It lives OUTSIDE eval/golden/ deliberately. eval/golden/ is the corpus and only the",
+    "corpus -- validate_golden.py globs it, `control: true` must be true of exactly one file",
+    "in it, and defect_ids are globally unique across it. A test instrument in that directory",
+    "would corrupt all three. Score it with --labels-dir eval/golden_fixtures.",
+    "Every conflict row here is injected:true on purpose. A conflict on an injected:false row",
+    "is a release-blocking false accusation (D-019), so mislabelling one would make the",
+    "harness fail its own gate on its own test data.",
+    "defect_ids use the D9x range, which the corpus catalog does not allocate, so these can",
+    "never collide with a real injection."
+  ],
+  "document": "fixture-paper",
+  "control": false,
+  "source": {
+    "license": "CC0",
+    "origin_url": "https://github.com/CASI-IFH-Lab/ForkTheSource-AI-Evidence/blob/main/tests/fixtures/ledger_fixture.json",
+    "origin_file": "ledger_fixture.json"
+  },
+  "labels": [
+    {
+      "ref_id": "R01",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R02",
+      "defect_id": "D90",
+      "expected_status": "verified",
+      "expected_indicators": ["version_mismatch"],
+      "defect": "Version-pair trap: the entry cites the preprint where the registry resolves the published version. Detected means NOT flagging conflict (D-013, D-014). Derived as a trap from label shape, not from its defect_id.",
+      "injected": true,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R03",
+      "defect_id": "D91",
+      "expected_status": "conflict",
+      "expected_indicators": ["doi_mismatch"],
+      "defect": "Printed DOI resolves to an unrelated work; every other field is intact, so the DOI is the only divergence.",
+      "injected": true,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R04",
+      "defect_id": "D92",
+      "expected_status": "conflict",
+      "expected_indicators": ["retracted"],
+      "defect": "Correct, resolvable reference to a work the registry flags as retracted; the registry flag is the only signal.",
+      "injected": true,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R05",
+      "expected_status": "unresolvable",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R06",
+      "defect_id": "D93",
+      "expected_status": "unresolvable",
+      "expected_indicators": ["malformed"],
+      "defect": "Entry mangled past the point of extraction, so it carries raw_text and the malformed indicator (D-012).",
+      "injected": true,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R07",
+      "defect_id": "D94",
+      "expected_status": "verified",
+      "expected_indicators": ["orphan"],
+      "defect": "Listed but cited by no claim; the reference itself resolves clean, which isolates the indicator (D-017).",
+      "injected": true,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R08",
+      "expected_status": "needs_check",
+      "expected_indicators": ["duplicate_entry"],
+      "injected": false,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    }
+  ]
+}
