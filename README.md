@@ -52,9 +52,11 @@ text. That needs OCR, which is out of scope.
 pytest
 ```
 
-The intake test reads `tests/data/sample.pdf`, a tiny fixture built by
-`python tests/data/make_sample_pdf.py`. Re-run that script if you want to change
-what the fixture says.
+The intake tests read two real open-access papers - `tests/data/sample.pdf` (arXiv)
+and `tests/data/plos_sample.pdf` (PLOS, CC BY) - plus four synthetic fixtures built by
+`python tests/data/make_fixtures.py`. Provenance and licences are recorded at the top
+of `tests/test_intake.py`; the synthetic fixtures are committed, so you only need
+`reportlab` if you want to change one.
 
 ## Where the code lives
 

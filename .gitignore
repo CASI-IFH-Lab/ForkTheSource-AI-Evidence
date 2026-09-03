@@ -4,6 +4,11 @@ __pycache__/
 *.pyc
 cache/
 eval/outputs/
-data/
+# Anchored to the repo root on purpose. Unanchored, `data/` also matched tests/data/,
+# so B0's two fixtures had to be force-added to get in and every fixture added since
+# was silently skipped by `git add -A` - which is exactly how P1's four new fixtures
+# nearly failed to reach the branch. Downloaded corpora belong in /data/ and
+# eval/outputs/; test fixtures are source, and source is tracked.
+/data/
 .DS_Store
 *.code-workspace
