@@ -22,6 +22,7 @@ Two things this file deliberately does NOT do, both from docs/decisions.md:
 
 import ast
 import importlib
+import re
 from pathlib import Path
 
 import pytest
@@ -131,7 +132,14 @@ def imported_modules(path: Path) -> set[str]:
     prose, not a dependency, and a substring check cannot tell the difference. This
     function only sees real import statements.
     """
-    tree = ast.parse(path.read_text(), filename=str(path))
+    # encoding="utf-8" is NOT optional. Without it read_text() uses the locale
+    # encoding, which is cp1252 on a default Windows install, and app.py contains a
+    # UTF-8 emoji (page_icon) whose 0x8d byte is undefined in cp1252. The read then
+    # raises UnicodeDecodeError and EVERY lane check in this file is skipped - the
+    # D-008 enforcement that keeps three people out of each other's files silently
+    # stops running on one teammate's machine. See test_no_text_is_read_without_an
+    # _explicit_encoding below, which stops this recurring anywhere in the repo.
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     names: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -255,3 +263,149 @@ def test_app_shell_only_imports_ritiks_lane():
         "app.py should read PDFs through src/ingest"
     )
     assert cross_lane_offenders("Ritik", names) == []
+
+
+# ---------------------------------------------------------------------------
+# Cross-platform correctness: no implicit text encodings anywhere
+# ---------------------------------------------------------------------------
+
+TEXT_IO_CALLS = ("read_text", "write_text", "open")
+
+# A file-mode string, e.g. "rb", "w", "a+b". Used to tell open()'s mode argument apart
+# from its path argument, which can also be a string literal.
+MODE_STRING = re.compile(r"[rwxab+t]+")
+
+# Modules whose .open() is not text I/O and takes no `encoding` at all, so demanding
+# one would be wrong rather than safer. pdfplumber.open() reads a PDF - binary by
+# nature. Add a name here only when the callable genuinely has no encoding parameter.
+NON_TEXT_OPENERS = ("pdfplumber",)
+
+
+def implicit_encoding_calls(path: Path) -> list[str]:
+    """Text reads/writes in `path` that do not pass an explicit `encoding=`.
+
+    AST-based rather than grepped so a mention in a docstring or a comment is not a
+    finding. `Path.open`, `open()`, `read_text` and `write_text` all default to the
+    LOCALE encoding, which differs per machine - cp1252 on a default Windows install,
+    UTF-8 here. A file that reads clean on macOS raises UnicodeDecodeError on Windows,
+    and the test that does the reading is the one that disappears.
+
+    Binary modes are exempt: `open(p, "rb")` has no encoding and must not have one.
+    `subprocess.run(..., text=True)` has the same defect and is checked separately
+    below, because its argument is `encoding=` on a different callable.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+        if name not in TEXT_IO_CALLS:
+            continue
+        kwargs = {kw.arg for kw in node.keywords}
+        if "encoding" in kwargs:
+            continue
+        # A binary mode makes encoding illegal rather than missing. The mode is
+        # positional index 1 for builtin open(path, mode) but index 0 for
+        # Path.open(mode), so match on the VALUE looking like a mode string rather
+        # than on its position - otherwise open("y", "rb") reads the filename as
+        # the mode and the exemption never fires.
+        if name == "open":
+            receiver = func.value if isinstance(func, ast.Attribute) else None
+            if isinstance(receiver, ast.Name) and receiver.id in NON_TEXT_OPENERS:
+                continue
+            candidates = [a.value for a in node.args
+                          if isinstance(a, ast.Constant) and isinstance(a.value, str)]
+            mode_kwarg = next((kw.value for kw in node.keywords if kw.arg == "mode"), None)
+            if isinstance(mode_kwarg, ast.Constant) and isinstance(mode_kwarg.value, str):
+                candidates.append(mode_kwarg.value)
+            if any(MODE_STRING.fullmatch(value) and "b" in value for value in candidates):
+                continue
+        offenders.append(f"{path.relative_to(REPO_ROOT)}:{node.lineno} {name}()")
+    return offenders
+
+
+def subprocess_text_calls_without_encoding(path: Path) -> list[str]:
+    """`subprocess.run(..., text=True)` decodes with the locale encoding too."""
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        kwargs = {kw.arg: kw.value for kw in node.keywords}
+        wants_text = any(
+            isinstance(kwargs.get(flag), ast.Constant) and kwargs[flag].value is True
+            for flag in ("text", "universal_newlines")
+        )
+        if wants_text and "encoding" not in kwargs:
+            offenders.append(f"{path.relative_to(REPO_ROOT)}:{node.lineno} subprocess text=True")
+    return offenders
+
+
+def all_project_python_files() -> list[Path]:
+    """Everything we own: the lane roots plus tests/ and scripts/."""
+    files = all_owned_python_files()
+    for extra in ("tests", "scripts"):
+        files.extend(python_files_under(REPO_ROOT / extra))
+    return files
+
+
+def test_no_text_is_read_or_written_without_an_explicit_encoding():
+    """Windows-portability guard, and the reason it is a test rather than a convention.
+
+    The bug this prevents already happened: `imported_modules()` in this file called
+    `read_text()` with no encoding, so on a cp1252 Windows install it raised on app.py's
+    emoji and took the lane checks down with it. Eight tests failed on Arsha's machine
+    and zero on mine, which is the worst shape a failure can have - the person who can
+    fix it cannot see it.
+
+    Equivalent to running the suite under PYTHONWARNDEFAULTENCODING=1 with
+    `-W error::EncodingWarning`, except it runs by default and covers files no test
+    happens to import.
+    """
+    offenders: list[str] = []
+    for path in all_project_python_files():
+        offenders.extend(implicit_encoding_calls(path))
+        offenders.extend(subprocess_text_calls_without_encoding(path))
+    assert not offenders, (
+        "these read or write text with the LOCALE encoding, which breaks on Windows:\n"
+        + "\n".join(offenders)
+        + '\n\nPass encoding="utf-8" explicitly.'
+    )
+
+
+def test_the_encoding_guard_actually_catches_things():
+    """Armed, not vacuously true - the same standard as the lane checks above."""
+    bad = REPO_ROOT / "tests" / "data" / "_encoding_guard_probe.py"
+    bad.write_text(
+        'from pathlib import Path\n'
+        'Path("x").read_text()\n'
+        'open("y")\n'
+        'import subprocess\n'
+        'subprocess.run(["true"], text=True)\n',
+        encoding="utf-8",
+    )
+    try:
+        found = implicit_encoding_calls(bad) + subprocess_text_calls_without_encoding(bad)
+        assert len(found) == 3, found
+    finally:
+        bad.unlink()
+
+
+def test_the_encoding_guard_allows_binary_and_explicit_calls():
+    good = REPO_ROOT / "tests" / "data" / "_encoding_guard_ok_probe.py"
+    good.write_text(
+        'from pathlib import Path\n'
+        'Path("x").read_text(encoding="utf-8")\n'
+        'open("y", "rb")\n'
+        'open("z", encoding="utf-8")\n'
+        'import subprocess\n'
+        'subprocess.run(["true"], text=True, encoding="utf-8")\n',
+        encoding="utf-8",
+    )
+    try:
+        assert implicit_encoding_calls(good) == []
+        assert subprocess_text_calls_without_encoding(good) == []
+    finally:
+        good.unlink()

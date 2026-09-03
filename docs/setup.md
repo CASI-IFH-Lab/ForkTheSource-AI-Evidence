@@ -94,8 +94,15 @@ being ignored and you are one `git add -A` away from publishing a live key.
 ## Step 5 — install dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+**`requirements-dev.txt`, not `requirements.txt`.** There are two files and the split is
+deliberate: `requirements.txt` is what the *app* needs to run, and `requirements-dev.txt`
+is `-r requirements.txt` plus `pytest`. Installing the dev file gets you both, which is
+what you want on a machine you are working on — and step 6 runs the tests, so the plain
+runtime file would leave you with no `pytest`. If you are only running the app and never
+the suite, `pip install -r requirements.txt` is enough.
 
 Expected: a few minutes of downloading (Streamlit pulls a large dependency tree — about
 80 seconds on a warm cache, longer on a cold one), ending with a `Successfully

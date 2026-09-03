@@ -33,14 +33,30 @@ thresholds:
   author_strong: 0.60
   year_tolerance: 1
 
-# P6 / A1 priority formula: severity x claim-weight x confidence, +0.3 if retracted, cap 1.0.
-# These are STATUS severities. The plan has no per-indicator severity.
+# P6 / A1 priority formula, from the plan's P6 step 2. Read by src/priority.py (B1,
+# shared infra) via src.settings - see docs/decisions.md D-009 and D-032.
+#
+#   severity(status)
+#     * min(1.0, usage_base + usage_step * max(0, citing_claims))
+#     * confidence
+#     + retracted_bonus if 'retracted' in indicators
+#   clamped to [0, cap]
+#
+# ALL FIVE are plan-sourced, like the four thresholds above - do not retune casually.
+# There are no defaults in code: compute_priority() raises naming the missing keys rather
+# than guessing, because a plausible wrong score silently reorders the reviewer worklist,
+# which is the one output a human actually reads.
 priority:
+  # STATUS severities. The plan has no per-indicator severity.
   severity:
     conflict: 1.0
     needs_check: 0.6
     unresolvable: 0.5
     verified: 0.0
+  usage_base: 0.4        # floor for a reference cited by zero claims
+  usage_step: 0.2        # added per citing claim; usage saturates at 3 claims
+  retracted_bonus: 0.3   # flat addition when the retracted indicator is present
+  cap: 1.0               # upper clamp on the final score
 
 # The accusation guard. Scanned by A1's gate.py against every rationale and check.
 banned_terms: [fake, fabricated, invented, nonexistent, fraud, plagiarism,
