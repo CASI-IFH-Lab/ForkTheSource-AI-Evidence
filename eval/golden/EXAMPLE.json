@@ -1,0 +1,45 @@
+{
+  "document": "example_paper",
+  "labels": [
+    {
+      "ref_id": "R01",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R02",
+      "expected_status": "conflict",
+      "expected_indicators": ["doi_mismatch"],
+      "defect": "Printed DOI replaced with the DOI of an unrelated journal article; title and authors left intact",
+      "injected": true
+    },
+    {
+      "ref_id": "R03",
+      "expected_status": "unresolvable",
+      "expected_indicators": ["malformed"],
+      "defect": "Author list and year deleted, title truncated mid-word, leaving an unparseable entry",
+      "injected": true
+    },
+    {
+      "ref_id": "R04",
+      "expected_status": "needs_check",
+      "expected_indicators": ["version_mismatch"],
+      "defect": "Publication year shifted by +3; title, authors and venue left intact",
+      "injected": true
+    },
+    {
+      "ref_id": "R05",
+      "expected_status": "verified",
+      "expected_indicators": ["orphan"],
+      "defect": "All in-text citation markers for this reference removed, so it is listed but never cited",
+      "injected": true
+    },
+    {
+      "ref_id": "R06",
+      "expected_status": "unresolvable",
+      "expected_indicators": [],
+      "injected": false
+    }
+  ]
+}
