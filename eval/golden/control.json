@@ -1,0 +1,201 @@
+{
+  "document": "control",
+  "control": true,
+  "source": {
+    "license": "CC-BY",
+    "origin_url": "https://arxiv.org/abs/2410.12660",
+    "origin_file": "2410.12660.pdf"
+  },
+  "labels": [
+    {
+      "ref_id": "R01",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R02",
+      "expected_status": "unresolvable",
+      "expected_indicators": [],
+      "injected": false,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R03",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R04",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R05",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R06",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R07",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R08",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R09",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R10",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R11",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R12",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R13",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R14",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R15",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R16",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R17",
+      "expected_status": "needs_check",
+      "expected_indicators": ["duplicate_entry"],
+      "injected": false,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R18",
+      "expected_status": "needs_check",
+      "expected_indicators": ["duplicate_entry"],
+      "injected": false,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R19",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R20",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R21",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R22",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R23",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R24",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R25",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R26",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R27",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R28",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    },
+    {
+      "ref_id": "R29",
+      "expected_status": "unresolvable",
+      "expected_indicators": [],
+      "injected": false,
+      "verified_by": "roy",
+      "verified_on": "2026-09-03"
+    },
+    {
+      "ref_id": "R30",
+      "expected_status": "verified",
+      "expected_indicators": [],
+      "injected": false
+    }
+  ]
+}

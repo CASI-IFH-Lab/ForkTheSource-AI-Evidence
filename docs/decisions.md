@@ -2260,3 +2260,144 @@ seven strings, spelled exactly, and passes the real model name on `extract` and 
 `dashboard` from `src/pipeline.py` would cross a lane boundary — copy the tuple into a
 test, or just read this entry. If you need an eighth stage, tell me and I will add the
 chip; do not rename an existing one.
+
+---
+
+## D-301 — Phase 1 uses the catalog's sparse defect_ids, not a contiguous D01–D06
+
+**Date** 2026-09-03 (R1) · **Decided by** Roy · **Status**: active
+
+**Affects**: `eval/golden/*.json`, `eval/run_eval.py`'s recall grouping,
+`docs/defect_catalog.md`'s injection worklist. Supersedes the "`defect_id` D01–D06" wording
+in `docs/team_handoff_docs/03_ROY_corpus_eval_demo.md`.
+
+**Decision**: Phase 1's six injections carry the `defect_id`s already assigned by type in
+`docs/defect_catalog.md` — `D01` swapped DOI, `D04` hallucinated, `D07` wrong year, `D14`
+orphan, `D16` retracted, `D20` preprint/journal version pair. They are deliberately
+non-contiguous. The lane document's "`D01`–`D06`" is not followed.
+
+**Why**: The lane document and the catalog assign `defect_id`s under two different schemes,
+and only `D01` agrees between them. Under the lane document's reading, `D02` is the catalog's
+second swapped-DOI slot and `D04`–`D06` are its three hallucinated slots, so Phase 2's
+expansion to 21 injections would have to either renumber every Phase 1 label or leave the
+catalog's worklist table permanently inconsistent with the label files. D-022 records that a
+schema change after R1 starts is a hand-edit of every row; an id change costs the same for
+none of the benefit. `FORMAT.md` constrains `defect_id` only to `D` + two digits plus global
+uniqueness — contiguity is a `ref_id` requirement (checklist item 5), not a `defect_id` one —
+and its schema table states ids are "assigned in `docs/defect_catalog.md` before R1 starts",
+which is the scheme adopted here. The rejected alternative was the lane document's own
+wording, rejected because it is the only one of the two that forces a renumber later.
+
+**Consequence**: **Roy** writes the six labels with these ids and fills the matching
+Paper/`ref_id` cells in the catalog's worklist table, leaving the other 15 rows `TBD`. R2
+derives the recall denominator from the distinct injected `defect_id`s present in the loaded
+label files — 6 in Phase 1 — and never hardcodes 21. Phase 2 adds the remaining 15 ids with
+no edit to any Phase 1 row. Nobody renumbers.
+
+---
+
+## D-302 — FORMAT.md's 21/23 counts and the 0/2 trap line are Phase-2 totals, not invariants
+
+**Date** 2026-09-03 (R1) · **Decided by** Roy · **Status**: active
+
+**Affects**: `eval/golden/FORMAT.md` (the schema table's `defect_id` row, validation
+checklist item 9, the named-trap-row paragraph), `eval/run_eval.py`,
+`eval/validate_golden.py`, `docs/defect_catalog.md`.
+
+**Decision**: Three numbers written into `eval/golden/FORMAT.md` describe the finished
+21-defect corpus, not the schema: "Injections = count of distinct `defect_id`s (21)" and
+"Label rows = 23" in the schema table, the same pair in validation checklist item 9, and the
+named trap row's example `false-alarm on version pairs: 0/2`. In Phase 1 the corresponding
+values are **6 distinct `defect_id`s, 6 `injected: true` rows, and one trap — `0/1`**. A
+Phase 1 label file that reads 6/6 is correct, and checklist item 9's final sentence is
+knowingly not satisfied. R2 and `eval/validate_golden.py` derive every denominator from the
+labels actually loaded and hardcode none of the three.
+
+**Why**: Phase 1 is one spiked paper with six defects by scope decision, and `FORMAT.md` was
+written against the three-paper corpus, so its totals arrived as literal constants inside a
+document that is otherwise a schema. Left unrecorded, the divergence has two bad readings: a
+Phase 2 reader runs the 13-item checklist against a Phase 1 file, sees item 9 fail, and
+either "fixes" a correct label file or concludes the corpus was built carelessly. The
+rejected alternative was to edit `FORMAT.md`'s numbers to 6/6/0-of-1: rejected because they
+become wrong again the moment Phase 2 lands the other 15 injections, and because a Tier-3
+shared spec should not be rewritten twice in one sprint to track a scope boundary. The other
+rejected alternative was to hardcode 21 in R2 and divide by it: rejected because it would
+report Phase 1 recall as n/21 and make a complete six-defect run look like a 29% failure.
+
+**Consequence**: **Roy** — R2 computes recall over the distinct injected `defect_id`s in the
+loaded label set, prints that denominator in the report header next to the model names so the
+metrics slide is self-describing, and prints the version-pair row as `n/<trap count>` rather
+than `n/2`. `eval/validate_golden.py` reports item 9's count sentence as `SCOPED`, citing this
+entry, and excludes it from its exit code; its uniqueness clause is still enforced. Nobody
+edits `FORMAT.md`'s numbers during Phase 1, and nobody treats the item-9 count failure as a
+defect in a label file. When Phase 2 completes the corpus, the three values return to
+21/23/0-of-2 on their own with no code change.
+
+---
+
+## D-303 — The injection route: curated 30-entry rebuild, contiguous renumber, no PDF surgery
+
+**Date** 2026-09-03 (R1) · **Decided by** Roy · **Status**: active
+
+**Affects**: `eval/corpus/` (`paper1.pdf`, `control.pdf`, `build_corpus.py`),
+`eval/golden/*.json`'s `ref_id` assignment, P1/P2's input at the 2:30 alignment check, the
+5:00 demo input.
+
+**Decision**: Three choices, taken together, define how the Phase 1 corpus was produced.
+(1) The spiked paper carries a **curated 30-entry selection** of the original's 282
+references, not the full bibliography and not a prefix. (2) The kept references are
+**renumbered contiguously 1–30** and all 349 in-text brackets are remapped, with elements for
+dropped references removed, emptied brackets deleted, and stranded punctuation repaired.
+(3) The PDF is **rebuilt single-column with reportlab** from text extracted at
+`x_tolerance=1.5`, rather than edited in the original's PDF text layer. The untouched
+originals are committed alongside, tracked, in `eval/corpus/originals/`.
+
+**Why**: Each choice was forced by something measurable.
+
+**The curation, not the whole paper.** 282 references means one AIR extraction call and one
+judge call each — roughly 564 per run, and `--full` runs three times for the determinism row,
+so about 1,700 calls for one metrics table, plus the same load live on stage. It also
+contradicts the demo's own sentence, "thirty references in, eight worth checking". A *prefix*
+was rejected on inspection: the lowest `10.48550` row in the original is [41] and the
+version-pair candidate is [49], so any prefix short enough to help loses both the D-037
+tripwire and the D-020 trap — the two rows D-037 and D-013 specifically require. Curation
+keeps every defect slot and both mandatory clean rows at 30 entries.
+
+**Contiguous renumbering.** `ref_id` is positional (D-026), so labels are unaffected either
+way and this was a free choice. Contiguous was taken because a bibliography printing
+[1],[6],[8],[12],… is not a document anyone would submit, and the corpus is also the demo
+artefact. The risk was the in-text remap: measurement first showed 349 brackets, 323 single
+and 26 comma-lists, and **zero ranges** — no `[12-15]` syntax anywhere in this paper — so the
+remap was mechanical rather than the 15-minute gamble the lane document budgeted for.
+
+**Rebuild, not text-layer surgery.** The pipeline consumes extracted text; P1 hands P2 a
+string. Editing glyphs inside the original's content streams would be slower, would risk
+producing a file whose visual text and extracted text disagree — the one failure mode that
+makes an eval result impossible to diagnose — and buys nothing the pipeline can observe. The
+originals stay committed and untouched so that R1's diff is reproducible by anyone, per
+`docs/defect_catalog.md`'s note on `eval/corpus/originals/` being tracked.
+
+Four consequences of rebuilding had to be handled rather than accepted. Extraction at
+pdfplumber's default tolerance loses inter-word spaces on both originals, so `x_tolerance` is
+pinned at 1.5 in the build script. Text-layer artefacts were repaired to what the original
+prints — a spacing acute recomposed to a precomposed letter, one suspended hyphen left
+unjoined, and DOIs rejoined where a line wrap split them — because each would otherwise
+corrupt a label on a row that is not the defect under test: the accent drops author overlap
+below `author_strong` and flips D-020's expected `verified`, and the other two put a corrupted
+title and an unparseable identifier on rows expected `verified`. In the control, one such
+repair was load-bearing rather than cosmetic: `10.1021/acs.chemrev. 9b00829` unrepaired would
+have resolved by title and then compared printed-against-resolved DOI, producing `conflict` on
+an `injected: false` row — a release-blocking false accusation under D-019 caused by the
+corpus rather than the pipeline, and no label could have made it safe. And the added entries'
+in-text markers reuse bracket slots the remap deletes anyway, so the body's bracket count
+changes only through deletion, never through insertion.
+
+**Consequence**: **Roy** — `eval/corpus/build_corpus.py` is the record of what was injected
+and is rerunnable; the six injections, the marker slots and the repairs are named constants at
+the top of it, so a label can always be traced to the line that produced it. The body loses
+577 words (3.6%) to deleted citations, which is expected and not damage. **Ritik** —
+`eval/corpus/paper1.pdf` is P6's test input; its 30 references are positional `R01`–`R30` and
+the 2:30 alignment check runs against it. reportlab is needed to rebuild and is not in
+`requirements.txt` — REQUEST filed in `progress/roy.md`. **Anyone** re-cutting the corpus in
+Phase 2 edits `KEEP`/`ADDED`/`INJECT` in that script and reruns; nobody hand-edits a corpus
+PDF.
