@@ -36,7 +36,7 @@ python --version
 ```
 
 Expected: `Python 3.13.7`. Only 3.13.7 has been verified end to end; **3.10 is the
-floor**, because `src/pipeline/intake.py` evaluates a `str | Path | bytes | IO[bytes]`
+floor**, because `src/ingest/pdf_parser.py` evaluates a `str | Path | bytes | IO[bytes]`
 union at runtime (PEP 604) and that syntax does not exist before 3.10. If you are on 3.9
 or older, the very first import fails with a `TypeError`. If you are on 3.10-3.12 it
 should work, but you are the first to try it — say so if anything breaks.
@@ -111,21 +111,23 @@ Expected, and this is the real check that your install is sound:
 ```
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
-collected 29 items
+collected 39 items
 
-tests/test_app.py ...                                                    [ 10%]
-tests/test_config.py .....                                               [ 27%]
-tests/test_intake.py ......                                              [ 48%]
-tests/test_pipeline_contract.py ...............                          [100%]
+tests/test_app.py ...                                                    [  7%]
+tests/test_config.py ............                                        [ 38%]
+tests/test_intake.py ......                                              [ 53%]
+tests/test_layout.py ...........                                         [ 82%]
+tests/test_no_secrets.py .......                                         [100%]
 
-============================== 29 passed in 0.58s ==============================
+============================== 39 passed in 0.67s ==============================
 ```
 
-**29 passed** is the number as of commit `4328eb7`. It will only ever go up; if you see
-fewer tests collected than files, your `pytest` is probably the system one rather than
-the venv's — check with `which pytest`.
+**39 passed** is the number as of commit `c83f17f`. If you see fewer tests collected than
+files, your `pytest` is probably the system one rather than the venv's — check with
+`which pytest`.
 
-These tests need no VPN, no key and no network. If they pass, the app will start.
+These tests need no VPN, no key and no network — `tests/test_no_secrets.py` shells out to
+`scripts/check_secrets.sh` but only reads local files. If they pass, the app will start.
 
 ## Step 7 — run the app
 
@@ -158,7 +160,39 @@ python -c "from src.llm import get_client; print(sorted(m.id for m in get_client
 ```
 
 Expected: a list of five model names from the gateway catalogue. This is a read-only
-listing — it consumes no tokens and calls no model.
+listing — it consumes no tokens and calls no model. Verified working on 2026-09-03.
+
+## Step 9 — before every push: the secrets check
+
+```bash
+./scripts/check_secrets.sh
+```
+
+Expected:
+
+```
+[1/2] scanning tracked files for key-shaped literals...
+      ok - no key-shaped literal in any tracked file.
+[2/2] scanning for the gateway host outside .env.example...
+      ok - gateway host appears only in .env.example.
+
+check_secrets: PASS
+```
+
+It scans **tracked files only** — untracked scratch files cannot reach GitHub — for two
+things: any `sk-`-shaped literal, and the AIR gateway host appearing anywhere other than
+`.env.example`. Non-zero exit means stop and fix before pushing.
+
+`pytest` runs it too, via `tests/test_no_secrets.py`, so a green suite already covers you.
+Run it directly when you have been editing docs and want the answer in one second.
+
+**This exists because of a real near-miss.** During the B0 docs pass, the first 16
+characters of a live key were drafted into `docs/setup.md` as an example of what *not* to
+paste. It was caught by hand before the commit. Hand-catching is not a control.
+
+If it ever fires on a real key: **rotate the key in Voyager immediately.** Per Section 8
+of the plan, rotation is the fix — deleting the commit is not. Assume anything pushed is
+already harvested.
 
 ---
 

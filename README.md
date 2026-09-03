@@ -1,7 +1,10 @@
 # ForkTheSource - AI Evidence
 
-Provenance + reproducibility verification for academic papers, on ASU AIR.
+Citation provenance verification for academic papers, on ASU AIR.
 CASI Team | ASU AIR Spark Challenge 2026
+
+> Reproducibility-claim verification is out of scope for this build - see
+> [docs/descoped.md](docs/descoped.md). Final wording of this section belongs to R4.
 
 Drop in an academic PDF. The app pulls out every bibliography reference, normalizes
 each one into JSON (authors, year, title, venue, volume, issue, pages, identifiers)
@@ -14,7 +17,9 @@ and shows them in a table.
 | [docs/setup.md](docs/setup.md) | Fresh machine. VPN, key, install, run. Start here. |
 | [docs/module_status.md](docs/module_status.md) | Before you branch anything. What is actually built, and what is safe to start. |
 | [docs/config_reference.md](docs/config_reference.md) | Every key in `config.yaml`, what reads it, what breaks without it. |
-| [docs/pipeline_stages.md](docs/pipeline_stages.md) | The seven stages, their signatures, and the injection seams. |
+| [docs/architecture_map.md](docs/architecture_map.md) | The real flow, the three lanes, the merge queue, and the two injection seams. |
+| [docs/module_implementation_plan.pdf](docs/module_implementation_plan.pdf) | **Ground truth.** The full plan. When a doc and the plan disagree, the plan wins. |
+| [docs/descoped.md](docs/descoped.md) | What was cut and why, so nobody re-derives it. |
 
 ## Setup
 1. Get an AIR API key at https://voyager.rc.asu.edu (ASU VPN required)
@@ -23,6 +28,7 @@ and shows them in a table.
 4. `cp .env.example .env` -> paste your OWN key into `.env`
 
 Never commit `.env`. Keys are personal - each teammate creates their own.
+Run `./scripts/check_secrets.sh` before every push (pytest runs it too).
 
 ## Run it
 
@@ -52,33 +58,46 @@ what the fixture says.
 app.py                    the web app - upload box, results
 config.yaml               model names, temperatures, banned terms. Change settings HERE
 .env.example              which environment variables you need (copy to .env)
+scripts/check_secrets.sh  run before every push
 src/
-  config.py               the only code that reads config.yaml
-  llm.py                  the shared client for the gateway (unused until M1)
-  pipeline/               one module per stage, all with the same run() entry point
-tests/                    one test module per stage, plus the fixture PDF
+  settings.py             the only code that reads config.yaml
+  llm.py                  the shared client for the gateway (no caller yet)
+  ingest/                 P1 PDF intake, P2 reference extractor      (Ritik)
+  resolvers/              P3 cache, P4 scholarly resolvers           (Ritik)
+  matching/               P5 evidence builder + rule classifier      (Ritik)
+tests/                    one test module per concern, plus the fixture PDF
 ```
 
-### The seven stages
+Not yet created, and deliberately so: `src/contract.py` (B1) and `src/judge/` and
+`dashboard/` are Arsha's, and `src/pipeline.py` is reserved for the P6 orchestrator.
+`tests/test_layout.py` asserts they stay absent until their owner creates them.
 
-| # | Stage | Kind | Does |
-|---|-------|------|------|
-| 1 | `intake` | plain code | read the PDF, find the bibliography |
-| 2 | `extractor` | model | each raw reference -> JSON fields |
-| 3 | `resolver` | plain code | look each reference up in public catalogues |
-| 4 | `judge` | model | does the citation match what we found? |
-| 5 | `repro_extractor` | model | pull the paper's reproducibility claims |
-| 6 | `repro_judge` | model | are those claims backed by evidence? |
-| 7 | `critic` | model | review the write-up before a human sees it |
+### The flow
 
-Only stage 1 is implemented right now (M0). The rest raise `NotImplementedError`
-and name the milestone they land in.
+| # | Step | Module | Owner | Kind |
+|---|------|--------|-------|------|
+| 1 | intake | P1 | Ritik | plain code |
+| 2 | extract | P2 | Ritik | **LLM** |
+| 3 | resolve | P4 on P3's cache | Ritik | plain code + HTTP |
+| 4 | evidence | P5 | Ritik | plain code |
+| 5 | verdict | A1, or P5's rules as default | Arsha / Ritik | **LLM**, or pure code |
+| 6 | priority | P6 / A1 | Ritik / Arsha | plain code |
+| 7 | ledger | P6 | Ritik | plain code |
+
+Only two steps call a model, which is why the whole pipeline runs end-to-end with no AIR
+key on the rule-based path. Detail, plus the merge queue and the two injection seams, in
+[docs/architecture_map.md](docs/architecture_map.md).
+
+Right now only step 1 is half built. Everything else is unwritten - see
+[docs/module_status.md](docs/module_status.md).
 
 ## Ground rules for the code
 
-- Model names live in `config.yaml` and nowhere else. No stage hardcodes one.
+- Model names live in `config.yaml` and nowhere else. No module hardcodes one.
 - Credentials come from the environment (`AIR_BASE_URL`, `AIR_API_KEY`), never from
   code, and never from a file that git tracks.
-- Every model reply is JSON validated against a schema. A bad reply is retried once,
-  then the item is marked `extraction_failed` rather than guessed at.
-- Stage 1 uses no model at all - it is `pdfplumber` and plain Python.
+- Every model reply is JSON validated against a schema. A bad reply is retried once, then
+  the entry keeps its `raw_text` and gets the `malformed` indicator - extraction never
+  drops an entry.
+- Only steps 2 and 5 use a model. Everything else is plain Python, which is what makes the
+  evaluation meaningful.

@@ -37,10 +37,10 @@
 Every PR, regardless of module:
 
 - [ ] No model name anywhere in `src/`. `grep -rn "openai\.rc\|sk-\|qwen\|glm\|gemma" src/` finds nothing.
-- [ ] No credential in any tracked file. `git log -p main..HEAD | grep -in "api[_-]key\|secret\|bearer"` returns only variable *names*, never values.
+- [ ] `./scripts/check_secrets.sh` passes (pytest runs it too).
 - [ ] `.env` is untracked and `git status` does not list it.
-- [ ] Model names read via `src.config.model_for(stage)`; temperatures via `src.config.temperature_for(stage)`.
-- [ ] Every model reply validated against a schema; on failure, retry once, then mark the item `extraction_failed`.
+- [ ] Model names read via `src.settings.model_for(stage)`; temperatures via `src.settings.temperature_for(stage)`.
+- [ ] Every model reply validated against a schema; on failure, retry once, then keep `raw_text` and set the `malformed` indicator - never drop an entry.
 - [ ] `pytest` passes, and the count went up if this PR adds behaviour.
 
 ## How I tested
