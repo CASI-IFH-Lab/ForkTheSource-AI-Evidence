@@ -124,6 +124,102 @@ And three at the B1 review itself (`main` `b1d7f65`):
 
 ---
 
+## D-103 — D-037's routing is implemented arXiv-first; `crossref.py` is imported lazily
+
+**Date** 2026-09-03 · **Decided by** Ritik · **Status**: active
+
+**Affects**: **P5** (what `resolve()` returns and when), **R2** (the 10.48550 tripwire),
+anyone importing `src.resolvers.*`. `src/resolvers/resolver.py`, `crossref.py`.
+
+**Decision, part 1 — the waterfall.** D-037 left the routing choice open. It is now:
+
+    1. ref.arxiv_id set, OR ref.doi starts with 10.48550/  ->  arXiv, then OpenAlex
+    2. else ref.doi                                        ->  Crossref, then OpenAlex
+    3. else ref.title                                      ->  Crossref search, then OpenAlex search
+
+Branch 1 also falls through to branch 3 rather than giving up, because an arXiv id that
+does not resolve is usually a typo in the printed reference and the title may still find
+the published version.
+
+**Measured on our own corpus** (both papers, live, all 74 references): 40/40 and 34/34
+resolved, **zero `None`**. `sample.pdf` routed 22 to arXiv and 18 to Crossref;
+`plos_sample.pdf` routed all 34 to Crossref. Both branches are hot on real input.
+
+**Neither paper contains a `10.48550` DOI.** The arXiv-first branch is exercised 22 times
+on `sample.pdf`, but always via `Reference.arxiv_id`, never via the DataCite-DOI form. So
+the *specific* regression D-037 warns about — Crossref 404ing a `10.48550` DOI — is
+covered on our side only by `test_an_arxiv_doi_resolves_and_does_not_return_none` and by
+Roy's planted tripwire row. **Both need to stay.** Deleting either would leave the
+sub-case with no coverage at all, and its failure mode is silent: a correctly-cited
+preprint resolving to nothing is byte-identical in the ledger to a hallucinated
+reference, which inflates our recall in our own favour.
+
+**Decision, part 2 — the lazy import, and why it is not a weakening of D-007.**
+`crossref.py` calls `settings.crossref_mailto()` at module import and raises without it,
+exactly as D-007 requires. But `resolver.py` imports `crossref` **lazily**, inside the
+function that uses it.
+
+The reason is that an eager import makes `src.resolvers` unimportable on any clone
+without `CROSSREF_MAILTO` — which breaks `pytest --collect-only`, the S0 status tool's
+interface probe, and CI, none of which ever make a request. A teammate would be unable to
+run the test suite because of a credential needed only for live lookups.
+
+Deferring costs something real, so it is paid for: the first failed Crossref import also
+emits a **one-time `RuntimeWarning` to stderr** naming `CROSSREF_MAILTO` and stating that
+the run is OpenAlex-only. A `notes` entry alone was not enough — callers may discard the
+list, and "running OpenAlex-only while the operator believes Crossref is live" is
+precisely the silent degradation D-007 exists to prevent. Once, not per reference: forty
+identical warnings get filtered, and then so does the first one.
+
+**Rejected alternative**: import eagerly and let CI set a placeholder mailto. Rejected
+because a placeholder address in the polite pool is worse than no address — it is a
+claim about who to contact, and it would be wrong.
+
+## D-102 — `malformed` is an explicit side-channel, not `title is None`
+
+**Date** 2026-09-03 · **Decided by** Ritik, on the reviewer's correction ·
+**Status**: active — **replaces the mechanism P2 shipped with**
+
+**Affects**: **P5** (which entries get `Indicator.MALFORMED`), **A3** (the call site),
+**R2** (recall on `injected: false` rows). `src/ingest/extractor.py`.
+
+**What changed**: `extract_references(doc)` returned `list[Reference]` and P2 exposed
+`is_malformed(ref)`, defined as `ref.title is None`. It now returns an
+`ExtractionResult` NamedTuple, and `is_malformed` is **deleted**:
+
+```python
+references, malformed_ref_ids = extract_references(doc)   # tuple form
+result = extract_references(doc)                          # or named
+result.references          # list[Reference], never short
+result.malformed_ref_ids   # frozenset[str]
+```
+
+**Why the predicate was wrong**, and it is worth being precise because the failure was
+invisible: a reference that **genuinely has no title** — a standard, a dataset, a
+"personal communication" — is a *successful* extraction of a titleless work. The
+predicate could not distinguish it from a failed one. Roy's corpus carries a
+genuine-unresolvable row specifically to exercise that path, and it may well be
+titleless. Stamping `malformed` on an `injected: false` entry puts a false indicator on a
+clean row and costs a row of recall **that presents as a P5 bug** — the wrong lane spends
+the time.
+
+Membership now comes from the **extraction attempt**: an id is in the set when no reply
+validated against `Reference` after the configured retry. A well-formed reply whose
+`title` is null is not malformed. Two tests pin this: one asserts a titleless-but-correct
+reference is absent from the set, and one asserts that an all-null reply and a garbage
+reply are *field-identical* and still correctly distinguished.
+
+**Why the tuple and not a module-level accessor.** Both were on the table. A NamedTuple
+return has no per-call state to get out of step with the references it describes, and
+tuple-unpacking keeps the two facts impossible to separate at the call site. The
+accessor's only advantage was not breaking callers that assume a bare list — and there
+were none: P6 does not exist yet, A3 is unwritten, and `app.py` calls `parse_pdf`, not
+this. Taking the disruption now, while the blast radius is zero, is cheaper than taking
+it after A3 ships.
+
+**`is_malformed` was deleted rather than deprecated.** A predicate that is wrong on real
+data should not stay importable where P5 might reach for it; a test asserts it is gone.
+
 ## D-101 — P2's determinism gate passes, but the guarantee is the disk cache, not the model
 
 **Date** 2026-09-03 · **Decided by** Ritik · **Status**: active
