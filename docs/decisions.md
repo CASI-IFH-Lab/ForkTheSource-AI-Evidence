@@ -124,6 +124,56 @@ And three at the B1 review itself (`main` `b1d7f65`):
 
 ---
 
+## D-101 — P2's determinism gate passes, but the guarantee is the disk cache, not the model
+
+**Date** 2026-09-03 · **Decided by** Ritik · **Status**: active
+
+**Affects**: P2 output stability, R2's scoring runs, and anyone comparing a ledger built
+on one machine to a ledger built on another. `src/ingest/extractor.py`.
+
+**Decision**: The P2 card's gate — *two runs on `sample.pdf` produce byte-identical JSON
+with sorted keys* — **passes, and P2 merges with it passing.** But the mechanism that
+makes it pass is the per-entry disk cache keyed on
+`(entry text, model, temperature, prompt version, cache schema_version)`, **not**
+model-level determinism. Per the card, the prompt was NOT reworded and the temperature was
+NOT retuned in response to this finding.
+
+**What was measured**, so nobody has to re-derive it:
+
+1. Three consecutive runs over all 40 entries with the disk cache bypassed (a fresh cache
+   file each time) produced byte-identical JSON, 40 real gateway calls each time.
+2. Those runs completed in 0.8–1.6s for 40 calls — roughly 25ms per call. **The AIR
+   gateway serves an exact-repeat request from its own cache.** So run 2 and run 3 were
+   not independent samples of the model, and result (1) is not evidence about the sampler.
+3. Probing the sampler directly — same entry, one trailing space appended so the request
+   bytes differ and the gateway cache misses — **5 of 6 entries were identical**. The
+   sixth, `[6] Francois Chollet. Xception...`, returned two distinct outputs across six
+   calls, differing in exactly one field:
+
+       venue: "arXiv preprint"   (4 of 6)
+       venue: null               (2 of 6)
+
+   `title`, `authors`, `year`, `doi` and `arxiv_id` were stable in every call.
+
+**Why this is acceptable to merge on**: the variance is confined to `venue`, which no
+downstream stage matches on — P4 resolves by DOI, arXiv id and title, and P5's thresholds
+are title/author/year. It is a display field. And in normal operation the disk cache makes
+re-runs byte-identical by construction, which is what the gate exists to protect: a demo
+and a scoring run must not move under R2's feet.
+
+**What it costs, stated plainly**: a **cold cache is not reproducible at the byte level.**
+A fresh clone, a bumped `PROMPT_VERSION`, a bumped `cache.schema_version`, or a changed
+model will re-extract, and a preprint entry's `venue` may come back differently than the
+run Roy's golden labels were built against. If R2 ever diffs two ledgers built on
+different machines, `venue` is the field to expect noise in, and it should not be scored.
+
+**Rejected alternative**: adding "arXiv preprint is not a venue" to the prompt's rule 4.
+It would very likely fix this instance, and the P2 card explicitly forbids it — *"do NOT
+rewrite prompts and do NOT retune temperature"* — because tuning a prompt against a
+one-entry observation at checkpoint time is how a lane spends an hour it does not have and
+lands a change nobody has time to re-measure. If `venue` ever starts mattering, that is
+the fix, and it comes with a `PROMPT_VERSION` bump.
+
 ## D-038 — Config-absence failures raise `RuntimeError`, naming every missing key
 
 **Date** 2026-09-03 (B1 review) · **Decided by** Ritik, **adopting Arsha's convention over
