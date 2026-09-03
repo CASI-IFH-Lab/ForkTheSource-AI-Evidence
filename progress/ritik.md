@@ -50,3 +50,10 @@ tests: 131 passed
 publishes: scripts/update_status.py (STATUS.md generator, --check for staleness), .githooks/{post-commit,post-merge}, scripts/install_hooks.sh
 notes: Status system before P1 so the three lanes never have to ask "is P2 merged yet" in chat. STATUS.md answers it in one command.
 next: S0 to main, then P1 pipeline skeleton, ETA 1:15
+
+## 1:05 — S0 MERGED
+branch: ritik/s0-status -> main @ 9b7af83
+tests: 162 passed
+publishes: scripts/update_status.py (STATUS.md generator; --check exits 1 if stale, --stdout prints), .githooks/{post-commit,post-merge}, scripts/install_hooks.sh, progress/<you>.md block format
+notes: STATUS.md is generated - never hand-edit it. Run `bash scripts/install_hooks.sh` once per clone. Guard fix in 4dcef20: the Action's recursion guard was skipping real pushes.
+next: P1, ETA 2:05
